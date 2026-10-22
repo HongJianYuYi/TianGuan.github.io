@@ -131,6 +131,7 @@ body {
 .panel {
   position: relative;
   padding: 18px 18px 20px;
+  display: flex; flex-direction: column;
   background: linear-gradient(160deg, var(--panel-a), var(--panel-b) 62%);
   border: 1px solid var(--line);
   box-shadow:
@@ -234,7 +235,7 @@ body {
 .loc-block { padding-top: 14px; border-top: 1px solid var(--line-soft); }
 
 .readout {
-  margin-top: 6px; padding: 12px 14px;
+  margin-top: auto; padding: 12px 14px;
   border: 1px solid var(--line-soft);
   background: linear-gradient(180deg, rgba(220, 187, 112, .035), rgba(0, 0, 0, .18));
 }
@@ -303,9 +304,9 @@ body {
 .omen-extra > div { font-size: 10px; letter-spacing: .18em; color: var(--gold-dim); margin-bottom: 4px; }
 .omen-extra p { margin: 0; color: #bdb6a4; }
 
-.rec-block { margin-top: 14px; }
+.rec-block { margin-top: 14px; flex: 1; display: flex; flex-direction: column; }
 .rec-block textarea {
-  width: 100%; resize: vertical; min-height: 74px;
+  width: 100%; flex: 1; resize: none; min-height: 74px;
   background: rgba(0, 0, 0, .25);
   border: 1px solid var(--line-soft);
   color: var(--ivory); font-family: var(--serif);

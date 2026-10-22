@@ -293,7 +293,7 @@
     // 北辰
     s.push('<circle cx="500" cy="500" r="16" fill="url(#coreGrad)" opacity="0.7"/>');
     s.push('<circle cx="500" cy="500" r="2.2" fill="#fffdf4"/>');
-    s.push('<text x="500" y="' + (CY + 192) + '" text-anchor="middle" fill="rgba(190,170,125,0.78)" font-size="12.5" letter-spacing="2">斗柄指' + mZhi + ' · 月建' + mZhi + '</text>');
+    s.push('<text x="500" y="' + (CY + 192) + '" text-anchor="middle" fill="rgba(190,170,125,0.78)" font-size="12.5" letter-spacing="2">斗柄指' + mZhi + ' · ' + c.lunar.monthName + '建' + mZhi + '</text>');
     s.push('<text x="500" y="' + (CY + 210) + '" text-anchor="middle" fill="rgba(140,137,128,0.7)" font-size="10" letter-spacing="1">北辰不动 · 众星拱之</text>');
 
     // 外缘

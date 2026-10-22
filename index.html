@@ -1,0 +1,156 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>天官太乙式</title>
+<meta name="description" content="以《史记·天官书》星官体系为骨，按七政四余之法的中式星盘。公历、农历、干支历三历互推，真太阳时定时，二十八宿分野入盘。">
+<link rel="stylesheet" href="css/style.css?v=1.0.7">
+</head>
+<body>
+
+<div class="sky" aria-hidden="true">
+  <div class="sky-glow"></div>
+  <div class="stars" id="stars"></div>
+</div>
+
+<header class="masthead">
+  <div class="seal" aria-label="星（甲骨文）"><span>星</span></div>
+  <div class="titles">
+    <h1>天官太乙式</h1>
+    <p>究天人之际 · 通古今之变 · 成一家之言</p>
+  </div>
+  <div class="masthead-meta">
+    <span id="meta-solar">—</span>
+    <span class="dot">·</span>
+    <span id="meta-tst">—</span>
+  </div>
+</header>
+
+<main class="grid">
+
+  <!-- 输入区 -->
+  <section class="panel panel-input" id="sec-input">
+    <h2 class="panel-title"><span>输入区</span><em>钦若昊天·敬授民时</em></h2>
+
+    <div class="cal-block">
+      <div class="cal-head"><b>公历</b><span class="hint">格里高利历</span></div>
+      <div class="row">
+        <label class="fld"><input id="sol-y" type="number" min="1900" max="2100" step="1" value="2026"><span>年</span></label>
+        <label class="fld"><input id="sol-m" type="number" min="1" max="12" step="1" value="10"><span>月</span></label>
+        <label class="fld"><input id="sol-d" type="number" min="1" max="31" step="1" value="22"><span>日</span></label>
+      </div>
+      <div class="row">
+        <label class="fld"><input id="sol-hh" type="number" min="0" max="23" step="1" value="14"><span>时</span></label>
+        <label class="fld"><input id="sol-mm" type="number" min="0" max="59" step="1" value="30"><span>分</span></label>
+        <button class="mini-btn" id="btn-now" type="button">此刻</button>
+      </div>
+    </div>
+
+    <div class="cal-block">
+      <div class="cal-head"><b>农历</b><span class="hint">夏历 · 定朔</span></div>
+      <div class="row">
+        <label class="fld"><input id="lun-y" type="number" min="1900" max="2100" step="1" value="2026"><span>年</span></label>
+        <label class="fld sel"><select id="lun-m"></select></label>
+        <label class="fld sel"><select id="lun-d"></select></label>
+      </div>
+      <div class="cal-foot" id="lun-note">—</div>
+    </div>
+
+    <div class="cal-block">
+      <div class="cal-head"><b>干支历</b><span class="hint">以立春、节气为界</span></div>
+      <div class="row four">
+        <label class="fld sel"><select id="gz-y"></select><span>年</span></label>
+        <label class="fld sel"><select id="gz-m"></select><span>月</span></label>
+        <label class="fld sel"><select id="gz-d"></select><span>日</span></label>
+        <label class="fld sel"><select id="gz-h"></select><span>时</span></label>
+      </div>
+      <div class="cal-foot" id="gz-note">—</div>
+    </div>
+
+    <div class="cal-block loc-block">
+      <div class="cal-head"><b>方位</b><span class="hint">求地方真太阳时</span></div>
+      <div class="row three">
+        <label class="fld sel"><select id="loc-prov"></select></label>
+        <label class="fld sel"><select id="loc-city"></select></label>
+        <label class="fld sel"><select id="loc-dist"></select></label>
+      </div>
+      <div class="row">
+        <label class="fld"><input id="loc-lon" type="number" step="0.001" min="-180" max="180"><span>东经</span></label>
+        <label class="fld"><input id="loc-lat" type="number" step="0.001" min="-90" max="90"><span>北纬</span></label>
+        <button class="mini-btn" id="btn-now-place" type="button" hidden></button>
+      </div>
+    </div>
+
+    <div class="readout">
+      <div class="ro-line"><span>真太阳时</span><b id="ro-tst">—</b></div>
+      <div class="ro-line"><span>地平经差</span><b id="ro-lon">—</b></div>
+      <div class="ro-line"><span>均时差</span><b id="ro-eot">—</b></div>
+      <div class="ro-line"><span>节气</span><b id="ro-term">—</b></div>
+      <div class="ro-line"><span>太阳黄经</span><b id="ro-sunlon">—</b></div>
+    </div>
+  </section>
+
+  <!-- 式盘区 -->
+  <section class="panel panel-chart" id="sec-chart">
+    <h2 class="panel-title"><span>式盘区</span><em>璇玑玉衡·以齐七政</em></h2>
+    <div class="chart-wrap">
+      <div id="chart"></div>
+    </div>
+    <div class="chart-legend">
+      <span><i class="lg-o"></i>二十八宿</span>
+      <span><i class="lg-t"></i>十二地支分野</span>
+      <span><i class="lg-p"></i>七政行度</span>
+      <span><i class="lg-c"></i>紫微北斗</span>
+      <span class="lg-note">上南下北 · 左东右西 · 地支顺时针</span>
+    </div>
+  </section>
+
+  <!-- 占验区 -->
+  <section class="panel panel-omen" id="sec-omen">
+    <h2 class="panel-title"><span>占验区</span><em>观乎天文·以察时变</em></h2>
+    <div class="table-wrap">
+      <table class="omen-table">
+        <thead>
+          <tr>
+            <th>星曜</th>
+            <th>黄经</th>
+            <th>入宿</th>
+            <th>宿度</th>
+            <th>入次 / 分野</th>
+            <th>黄道宫</th>
+          </tr>
+        </thead>
+        <tbody id="omen-body"></tbody>
+      </table>
+    </div>
+    <div class="omen-extra">
+      <div>斗建时序</div>
+      <p id="omen-note">—</p>
+    </div>
+    <div class="rec-block">
+      <div class="cal-head"><b>占验记录</b><span class="hint">自动留存于本机</span></div>
+      <textarea id="record" rows="4" placeholder="记所占之事、所得之验……"></textarea>
+    </div>
+    <div class="actions">
+      <button id="btn-export" class="primary" type="button">存为图片</button>
+      <button id="btn-clear-rec" class="ghost" type="button">清空记录</button>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <p>宿度依古宿制（二十八宿古度合 365.25 度，角宿起于角宿一），黄经用现代星历推步；日月五星视黄经与 astronomy-engine 对照误差小于一角分，节气时刻约差数分钟。日柱以真太阳时子正前换日，干支年以立春为界。</p>
+  <p class="foot-ver">天官太乙式 · v1.0.2</p>
+</footer>
+
+<script src="js/data/data.js?v=1.0.7"></script>
+<script src="js/data/regions.js?v=1.0.7"></script>
+<script src="js/astro.js?v=1.0.7"></script>
+<script src="js/calendar.js?v=1.0.7"></script>
+<script src="js/chart.js?v=1.0.7"></script>
+<script src="js/export.js?v=1.0.7"></script>
+<script src="js/app.js?v=1.0.7"></script>
+</body>
+</html>

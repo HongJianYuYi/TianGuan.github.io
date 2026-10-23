@@ -4,8 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>天官太乙式</title>
-<meta name="description" content="以《史记·天官书》星官体系为骨，按七政四余之法的中式星盘。公历、农历、干支历三历互推，真太阳时定时，二十八宿分野入盘。">
-<link rel="stylesheet" href="css/style.css?v=1.0.9">
+<meta name="description" content="以《史记·天官书》星官体系为骨、取古式盘之制的中式实星星盘。公历、农历、干支历三历互推，真太阳时定时，七政以赤经入二十八宿，十二次依《汉书·律历志》次度表。">
+<link rel="icon" type="image/svg+xml" href="favicon.svg?v=1.4.3">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=1.4.3">
+<link rel="stylesheet" href="css/style.css?v=1.4.3">
 </head>
 <body>
 
@@ -29,9 +31,9 @@
 
 <main class="grid">
 
-  <!-- 输入区 -->
+  <!-- 推步区 -->
   <section class="panel panel-input" id="sec-input">
-    <h2 class="panel-title"><span>输入区</span><em>钦若昊天·敬授民时</em></h2>
+    <h2 class="panel-title"><span>推步区</span><em>钦若昊天·敬授民时</em></h2>
 
     <div class="cal-block">
       <div class="cal-head"><b>公历</b><span class="hint">格里高利历</span></div>
@@ -101,7 +103,7 @@
       <span><i class="lg-o"></i>二十八宿</span>
       <span><i class="lg-t"></i>十二地支分野</span>
       <span><i class="lg-p"></i>七政行度</span>
-      <span><i class="lg-c"></i>紫微北斗</span>
+      <span><i class="lg-c"></i>中宫天极星</span>
       <span class="lg-note">上南下北 · 左东右西 · 地支顺时针</span>
     </div>
   </section>
@@ -114,11 +116,13 @@
         <thead>
           <tr>
             <th>星曜</th>
-            <th>黄经</th>
+            <th>亮度</th>
+            <th>行度</th>
+            <th>赤经</th>
+            <th>星次</th>
             <th>入宿</th>
             <th>宿度</th>
-            <th>入次 / 分野</th>
-            <th>黄道宫</th>
+            <th>分野</th>
           </tr>
         </thead>
         <tbody id="omen-body"></tbody>
@@ -129,7 +133,7 @@
       <p id="omen-note">—</p>
     </div>
     <div class="rec-block">
-      <div class="cal-head"><b>占验记录</b><span class="hint">自动留存于本机</span></div>
+      <div class="cal-head"><b>断语记录</b><span class="hint">自动留存于本机</span></div>
       <textarea id="record" rows="4" placeholder="记所占之事、所得之验……"></textarea>
     </div>
     <div class="actions">
@@ -141,16 +145,16 @@
 </main>
 
 <footer class="foot">
-  <p>宿度依古宿制（二十八宿古度合 365.25 度，角宿起于角宿一），黄经用现代星历推步；日月五星视黄经与 astronomy-engine 对照误差小于一角分，节气时刻约差数分钟。日柱以真太阳时子正前换日，干支年以立春为界。</p>
-  <p class="foot-ver">天官太乙式 · v1.0.2</p>
+  <p>宿度依古宿制（二十八宿古度合 365.25 度），入宿以赤道为断、角宿起于角宿一赤经，一遵古法；十二次依《汉书·律历志》次度表，界穿宿而过。七政以现代星历推步，视黄经与 astronomy-engine 对照误差小于一角分，节气时刻约差数分钟。日柱以真太阳时子正前换日，干支年以立春为界。</p>
+  <p class="foot-ver">天官太乙式 · v1.4.3</p>
 </footer>
 
-<script src="js/data/data.js?v=1.0.9"></script>
-<script src="js/data/regions.js?v=1.0.9"></script>
-<script src="js/astro.js?v=1.0.9"></script>
-<script src="js/calendar.js?v=1.0.9"></script>
-<script src="js/chart.js?v=1.0.9"></script>
-<script src="js/export.js?v=1.0.9"></script>
-<script src="js/app.js?v=1.0.9"></script>
+<script src="js/data/data.js?v=1.4.3"></script>
+<script src="js/data/regions.js?v=1.4.3"></script>
+<script src="js/astro.js?v=1.4.3"></script>
+<script src="js/calendar.js?v=1.4.3"></script>
+<script src="js/chart.js?v=1.4.3"></script>
+<script src="js/export.js?v=1.4.3"></script>
+<script src="js/app.js?v=1.4.3"></script>
 </body>
 </html>

@@ -78,16 +78,41 @@
     '子': { name: '玄枵', xiu: ['女', '虚', '危'], zhou: '青州', guo: '齐' },
     '丑': { name: '星纪', xiu: ['斗', '牛'], zhou: '扬州', guo: '吴越' },
     '寅': { name: '析木', xiu: ['尾', '箕'], zhou: '幽州', guo: '燕' },
-    '卯': { name: '大火', xiu: ['氐', '房', '心'], zhou: '徐州', guo: '宋' },
-    '辰': { name: '寿星', xiu: ['角', '亢'], zhou: '豫州', guo: '郑' },
+    '卯': { name: '大火', xiu: ['氐', '房', '心'], zhou: '豫州', guo: '宋' },
+    '辰': { name: '寿星', xiu: ['角', '亢'], zhou: '兖州', guo: '郑' },
     '巳': { name: '鹑尾', xiu: ['翼', '轸'], zhou: '荆州', guo: '楚' },
     '午': { name: '鹑火', xiu: ['柳', '星', '张'], zhou: '三河', guo: '周' },
     '未': { name: '鹑首', xiu: ['井', '鬼'], zhou: '雍州', guo: '秦' },
     '申': { name: '实沈', xiu: ['觜', '参'], zhou: '益州', guo: '魏' },
     '酉': { name: '大梁', xiu: ['胃', '昴', '毕'], zhou: '冀州', guo: '赵' },
-    '戌': { name: '降娄', xiu: ['奎', '娄'], zhou: '兖州', guo: '鲁' },
+    '戌': { name: '降娄', xiu: ['奎', '娄'], zhou: '徐州', guo: '鲁' },
     '亥': { name: '娵訾', xiu: ['室', '壁'], zhou: '并州', guo: '卫' }
   };
+
+  // 二十八宿起始累计古度（自角宿起，沿环递进）
+  var XIU_CUM = {
+    '角': 0, '亢': 12, '氐': 21, '房': 36, '心': 41, '尾': 46, '箕': 64,
+    '斗': 75, '牛': 101.25, '女': 109.25, '虚': 121.25, '危': 131.25, '室': 148.25, '壁': 164.25,
+    '奎': 173.25, '娄': 189.25, '胃': 201.25, '昴': 215.25, '毕': 226.25, '觜': 242.25, '参': 244.25,
+    '井': 253.25, '鬼': 286.25, '柳': 290.25, '星': 305.25, '张': 312.25, '翼': 330.25, '轸': 348.25
+  };
+
+  // 《汉书·律历志》次度表：十二次以宿度为界，穿宿而过，非三十度等分
+  // 沿宿环递进：寿星初轸十二度，大火初氐五度，……鹑尾初张十八度，还于寿星
+  var CI_SEQ = [
+    { name: '寿星', zhi: '辰', xiu: '轸', du: 12 },
+    { name: '大火', zhi: '卯', xiu: '氐', du: 5 },
+    { name: '析木', zhi: '寅', xiu: '尾', du: 10 },
+    { name: '星纪', zhi: '丑', xiu: '斗', du: 12 },
+    { name: '玄枵', zhi: '子', xiu: '女', du: 8 },
+    { name: '娵訾', zhi: '亥', xiu: '危', du: 16 },
+    { name: '降娄', zhi: '戌', xiu: '奎', du: 5 },
+    { name: '大梁', zhi: '酉', xiu: '胃', du: 7 },
+    { name: '实沈', zhi: '申', xiu: '毕', du: 12 },
+    { name: '鹑首', zhi: '未', xiu: '井', du: 16 },
+    { name: '鹑火', zhi: '午', xiu: '柳', du: 9 },
+    { name: '鹑尾', zhi: '巳', xiu: '张', du: 18 }
+  ];
 
   // 七政
   var PLANETS = [
@@ -112,6 +137,22 @@
     '冬至', '小寒', '大寒', '立春', '雨水', '惊蛰'
   ];
 
+  // 五行生克与七曜庙旺（宫即星所临赤道地支之五行，与盘面支扇区同贯）
+  // 庙＝宫生星，旺＝星克宫，平＝星同宫，落＝宫克星，陷＝星生宫
+  var BODY_WX = { sun: '火', moon: '水', mercury: '水', venus: '金', mars: '火', jupiter: '木', saturn: '土' };
+  var ZHI_WX = { '子': '水', '丑': '土', '寅': '木', '卯': '木', '辰': '土', '巳': '火', '午': '火', '未': '土', '申': '金', '酉': '金', '戌': '土', '亥': '水' };
+  var WX_SHENG = { '木': '火', '火': '土', '土': '金', '金': '水', '水': '木' }; // 我生者
+  var WX_KE = { '木': '土', '土': '水', '水': '火', '火': '金', '金': '木' };   // 我克者
+  function miaoWang(bodyKey, gongZhi) {
+    var s = BODY_WX[bodyKey], g = ZHI_WX[gongZhi];
+    if (!s || !g) return { t: '—', rule: '', cls: 'ping' };
+    if (s === g) return { t: '平', rule: '星同宫', cls: 'ping' };
+    if (WX_SHENG[g] === s) return { t: '庙', rule: '宫生星', cls: 'miao' };
+    if (WX_KE[s] === g) return { t: '旺', rule: '星克宫', cls: 'wang' };
+    if (WX_KE[g] === s) return { t: '落', rule: '宫克星', cls: 'luo' };
+    return { t: '陷', rule: '星生宫', cls: 'xian' };
+  }
+
   window.TGData = {
     GAN: GAN,
     ZHI: ZHI,
@@ -121,9 +162,14 @@
     LUNAR_DAY_NAME: LUNAR_DAY_NAME,
     MANSIONS: MANSIONS,
     CI: CI,
+    XIU_CUM: XIU_CUM,
+    CI_SEQ: CI_SEQ,
     PLANETS: PLANETS,
     ZODIAC: ZODIAC,
     ZODIAC_ZHI: ZODIAC_ZHI,
-    TERMS: TERMS
+    TERMS: TERMS,
+    BODY_WX: BODY_WX,
+    ZHI_WX: ZHI_WX,
+    miaoWang: miaoWang
   };
 })();

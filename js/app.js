@@ -175,16 +175,32 @@
     }
   }
 
+  // 行度：顺逆留伏。伏以距日角距为断（辰星十八、太白十一、外行星十五度内为伏）
+  var FU_LIMIT = { mercury: 18, venus: 11, mars: 15, jupiter: 15, saturn: 15 };
+  function motionInfo(b) {
+    var s = Math.abs(b.speed);
+    var v = s >= 10 ? s.toFixed(1) : (s < 0.005 ? '0.00' : s.toFixed(2));
+    if (b.key !== 'sun' && b.key !== 'moon' && b.elong < FU_LIMIT[b.key]) return { t: '伏 ' + v, cls: 'fu' };
+    if (Math.abs(b.speed) <= 0.03) return { t: '留 ' + v, cls: 'liu' };
+    if (b.speed < 0) return { t: '逆 ' + v, cls: 'ni' };
+    return { t: '顺 ' + v, cls: 'shun' };
+  }
+
+  // 列序：体（星曜）→ 性（亮度）→ 行（行度）→ 位（赤经）→ 次（坐支之次名）→ 宿 → 度 → 野（州国）
   function renderTable(c) {
     var html = '';
     c.bodies.forEach(function (b) {
+      var mw = D.miaoWang(b.key, b.zhi);
+      var mo = motionInfo(b);
       html += '<tr>' +
         '<td class="p-name"><span class="p-glyph" style="color:' + b.color + '">' + b.glyph + '</span>' + b.name + '</td>' +
-        '<td class="num">' + b.lon.toFixed(2) + '°</td>' +
+        '<td class="wx wx-' + mw.cls + '" title="' + mw.t + '（' + mw.rule + '，' + b.zhi + '宫）">' + mw.t + '</td>' +
+        '<td class="num mo mo-' + mo.cls + '">' + mo.t + '</td>' +
+        '<td class="num">' + b.ra.toFixed(2) + '°</td>' +
+        '<td class="xz">' + D.CI[b.zhi].name + '</td>' +
         '<td class="xiu">' + b.xiu.full + '</td>' +
         '<td class="num">' + b.du.toFixed(2) + '</td>' +
-        '<td>' + b.ci + '<span class="dim"> · ' + b.zhou + '</span></td>' +
-        '<td>' + b.zodiacZhi + '宫<span class="dim"> ' + b.zodiac + '</span></td>' +
+        '<td>' + b.zhou + '<span class="dim"> · ' + b.guo + '</span></td>' +
         '</tr>';
     });
     el('omen-body').innerHTML = html;
@@ -192,16 +208,27 @@
 
   function renderOmen(c) {
     var sun = c.bodies[0];
+    var moon = c.bodies[1];
     var mZhi = CH.monthZhi(c);
-    // 月将：与月建六合之地支；十二月将神名
-    var liuhe = { '子':'丑','丑':'子','寅':'亥','卯':'戌','辰':'酉','巳':'申',
-                  '午':'未','未':'午','申':'巳','酉':'辰','戌':'卯','亥':'寅' };
-    var jiangshen = { '子':'神后','丑':'大吉','寅':'功曹','卯':'太冲','辰':'天罡','巳':'太乙',
-                      '午':'胜光','未':'小吉','申':'传送','酉':'从魁','戌':'河魁','亥':'登明' };
-    var yuejiang = liuhe[mZhi];
+    // 月将：太阳过宫为将，中气换将；十二月将神名
+    var jiangshen = { '子': '神后', '丑': '大吉', '寅': '功曹', '卯': '太冲', '辰': '天罡', '巳': '太乙',
+                      '午': '胜光', '未': '小吉', '申': '传送', '酉': '从魁', '戌': '河魁', '亥': '登明' };
+    var yuejiang = D.ZODIAC_ZHI[Math.floor(A.norm360(c.solarLon) / 30) % 12];
+
+    // 月相与交食：朔望视日月黄经之差，食限视月距黄道之纬
+    var phase = A.norm360(moon.lon - sun.lon);
+    var Xiang = ['朔', '上弦', '望', '下弦'];
+    var xiang = '月近' + Xiang[Math.floor(((phase + 22.5) % 360) / 90)];
+    var shuoNear = Math.abs(A.norm180(phase)) < 12;
+    var wangNear = Math.abs(A.norm180(phase - 180)) < 12;
+    var eclipse = '';
+    if (shuoNear && Math.abs(moon.lat) < 1.4) eclipse = '，日食可期';
+    else if (wangNear && Math.abs(moon.lat) < 1.1) eclipse = '，月食可期';
+
     el('omen-note').textContent =
       c.lunar.monthName + '建' + mZhi + '，' + yuejiang + '将' + jiangshen[yuejiang] + '。' +
-      '太阳入' + sun.xiu.name + '宿' + sun.du.toFixed(1) + '度，斗柄指' + mZhi + '（月建）。';
+      '太阳入' + sun.xiu.name + '宿' + sun.du.toFixed(1) + '度，斗柄指' + mZhi + '（月建）。' +
+      xiang + eclipse + '。';
   }
 
   /* ---------- 同步入口 ---------- */

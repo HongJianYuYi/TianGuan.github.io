@@ -267,6 +267,23 @@
     return norm360(gmst + lonEast);
   }
 
+  /* ---------- 黄赤转换 ---------- */
+  // 黄赤交角（当日值）
+  function obliquity(jd) {
+    var T = (jd - 2451545.0) / 36525;
+    return 23.4392911 - 0.0130042 * T;
+  }
+
+  // 黄道坐标 → 赤道坐标（当日真赤道），返回 {ra, dec}（度）
+  function eclToEqu(lon, lat, jd) {
+    var e = obliquity(jd) * D2R;
+    var l = norm360(lon) * D2R;
+    var b = (lat || 0) * D2R;
+    var ra = Math.atan2(Math.sin(l) * Math.cos(e) - Math.tan(b) * Math.sin(e), Math.cos(l)) * R2D;
+    var dec = Math.asin(Math.sin(b) * Math.cos(e) + Math.cos(b) * Math.sin(e) * Math.sin(l)) * R2D;
+    return { ra: norm360(ra), dec: dec };
+  }
+
   window.TGAstro = {
     norm360: norm360,
     norm180: norm180,
@@ -280,6 +297,8 @@
     moonState: moonState,
     planetState: planetState,
     solarTermsOfYear: solarTermsOfYear,
-    localSiderealTime: localSiderealTime
+    localSiderealTime: localSiderealTime,
+    obliquity: obliquity,
+    eclToEqu: eclToEqu
   };
 })();

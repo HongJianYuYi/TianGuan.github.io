@@ -1,5 +1,5 @@
 /* 天官太乙式 · 式盘绘制
- * 由内而外：紫微宫（北斗随斗建而移）→ 七政 → 十二次分野 → 二十八宿
+ * 由内而外：中宫天极星（北斗随斗建而移）→ 七政 → 十二次分野 → 二十八宿
  * 盘面以上南下北、左东右西为序，故地支自午起，顺时针行。
  */
 (function () {
@@ -12,17 +12,20 @@
   var R_OUT = 462;   // 外缘
   var R_XIU_IN = 392;  // 宿环内缘
   var R_ZHI_IN = 314;  // 地支环内缘
-  var R_DISC = 232;    // 紫微宫
+  var R_DISC = 254;    // 中宫天极星内盘
 
-  // 北斗七星（口径朝上，斗柄向左下，单位为盘心比例的坐标，y 向下）
+  // 北斗七星：按 J2000 实测赤道坐标（赤经·cos赤纬, 赤纬）投影，y 向下。
+  // 天枢α165.93°/+61.75° 天璇β165.46°/+56.38° 天玑γ178.46°/+53.69°
+  // 天权δ183.86°/+57.03° 玉衡ε193.51°/+55.96° 开阳ζ200.98°/+54.93° 摇光η206.89°/+49.31°
+  // 两千年自行不足 0.1°，古今形状一致；面对北天赤经向右递增，故不取镜像。m 依视星等。
   var BEIDOU = [
-    { n: '天枢', x: 0.42, y: 0.62, m: 1.0 },
-    { n: '天璇', x: 0.62, y: -0.30, m: 0.92 },
-    { n: '天玑', x: 0.05, y: -0.55, m: 0.86 },
-    { n: '天权', x: -0.15, y: -0.10, m: 0.7 },
-    { n: '玉衡', x: -0.72, y: -0.02, m: 0.98 },
-    { n: '开阳', x: -1.18, y: 0.30, m: 0.84 },
-    { n: '摇光', x: -1.50, y: 0.72, m: 0.9 }
+    { n: '天枢', x: -1.136, y: -0.625, m: 1.0 },
+    { n: '天璇', x: -1.163, y: -0.088, m: 0.83 },
+    { n: '天玑', x: -0.427, y: 0.181, m: 0.8 },
+    { n: '天权', x: -0.121, y: -0.153, m: 0.6 },
+    { n: '玉衡', x: 0.425, y: -0.046, m: 1.0 },
+    { n: '开阳', x: 0.849, y: 0.058, m: 0.85 },
+    { n: '摇光', x: 1.182, y: 0.619, m: 0.95 }
   ];
   var BOWL_PATH = [0, 1, 2, 3];
   var HANDLE_PATH = [3, 4, 5, 6];
@@ -191,16 +194,23 @@
       s.push(tangText(R_OUT + 16, mid, g.name, 'fill="rgba(190,170,125,0.62)" font-size="11.5" letter-spacing="4"'));
     });
 
-    // 地支 / 十二次
+    // 地支环（支扇区以宿界为界）
     var zhiColors = ['rgba(150,180,235,0.028)', 'rgba(150,180,235,0.055)'];
     c.sectors.forEach(function (sec, idx) {
       var zg = angRange(sec.start, sec.start + sec.width);
       s.push('<path d="' + wedge(R_ZHI_IN, R_XIU_IN, zg.a1, zg.a1 + zg.w) + '" fill="' + zhiColors[idx % 2] + '" stroke="rgba(150,180,235,0.16)" stroke-width="0.6"/>');
-      var ci = D.CI[sec.zhi];
       var midA = zg.a1 + zg.w / 2;
       s.push(tangText((R_ZHI_IN + R_XIU_IN) / 2 + 22, midA, sec.zhi, 'fill="#f4e6bc" font-size="28"'));
-      s.push(tangText((R_ZHI_IN + R_XIU_IN) / 2 - 2, midA, ci.name, 'fill="rgba(196,178,140,0.8)" font-size="13" letter-spacing="1"'));
-      s.push(tangText((R_ZHI_IN + R_XIU_IN) / 2 - 19, midA, ci.zhou, 'fill="rgba(140,137,128,0.78)" font-size="10.5"'));
+    });
+
+    // 十二次：《汉志》次度表，界穿宿而过，与地支扇区脱钩，岁差漂移自见
+    c.ciArcs.forEach(function (arc) {
+      var ab = ang(arc.start);
+      var pa = pt(R_ZHI_IN, ab), pb = pt(R_XIU_IN, ab);
+      s.push('<line x1="' + f(pa[0]) + '" y1="' + f(pa[1]) + '" x2="' + f(pb[0]) + '" y2="' + f(pb[1]) + '" stroke="rgba(196,178,140,0.5)" stroke-width="0.9"/>');
+      var midA = ang(arc.mid);
+      s.push(tangText((R_ZHI_IN + R_XIU_IN) / 2 - 2, midA, arc.name, 'fill="rgba(196,178,140,0.8)" font-size="13" letter-spacing="1"'));
+      s.push(tangText((R_ZHI_IN + R_XIU_IN) / 2 - 19, midA, arc.zhou, 'fill="rgba(140,137,128,0.78)" font-size="10.5"'));
     });
 
     // 七政环
@@ -216,9 +226,9 @@
     }
     s.push('<g>' + pticks.join('') + '</g>');
 
-    // 七政入度
+    // 七政入度（以赤经定位，与宿环同口径）
     var labels = c.bodies.map(function (b) {
-      return { b: b, a: ang(b.lon) };
+      return { b: b, a: ang(b.ra) };
     }).sort(function (x, y) { return x.a - y.a; });
 
     var lastA = -999;
@@ -230,8 +240,8 @@
       o.labelA = norm360(la);
 
       var b = o.b;
-      var pm = pt(262, a);
-      var pl = pt(292, la);
+      var pm = pt(274, a);
+      var pl = pt(300, la);
 
       // 引线
       s.push('<line x1="' + f(pm[0]) + '" y1="' + f(pm[1]) + '" x2="' + f(pl[0]) + '" y2="' + f(pl[1]) + '" stroke="' + b.color + '" stroke-opacity="0.35" stroke-width="0.6"/>');
@@ -240,10 +250,10 @@
       s.push('<circle cx="' + f(pm[0]) + '" cy="' + f(pm[1]) + '" r="3.1" fill="' + b.color + '"/>');
       s.push('<circle cx="' + f(pm[0]) + '" cy="' + f(pm[1]) + '" r="1.1" fill="#ffffff" opacity="0.85"/>');
       // 名
-      s.push(radText(292, la, b.glyph + ' ' + b.name, 'fill="' + b.color + '" font-size="15" letter-spacing="0.5"'));
+      s.push(radText(300, la, b.glyph + ' ' + b.name, 'fill="' + b.color + '" font-size="15" letter-spacing="0.5"'));
     });
 
-    // 紫微宫
+    // 中宫天极星
     s.push('<circle cx="500" cy="500" r="' + R_DISC + '" fill="url(#discGrad)" opacity="0.92"/>');
     s.push('<circle cx="500" cy="500" r="' + (R_DISC - 6) + '" fill="none" stroke="rgba(216,186,116,0.18)" stroke-width="0.7"/>');
 
@@ -258,15 +268,15 @@
     }
     s.push('<g>' + innerStars.join('') + '</g>');
 
-    s.push('<text x="500" y="' + (CY - 170) + '" text-anchor="middle" fill="rgba(232,214,168,0.86)" font-size="17" letter-spacing="8">紫微宫</text>');
-    s.push('<line x1="448" y1="' + (CY - 154) + '" x2="552" y2="' + (CY - 154) + '" stroke="rgba(216,186,116,0.30)" stroke-width="0.7"/>');
+    s.push('<text x="500" y="' + (CY - 192) + '" text-anchor="middle" fill="rgba(238,220,172,0.96)" font-size="20" letter-spacing="8">中宫天极星</text>');
+    s.push('<line x1="448" y1="' + (CY - 176) + '" x2="552" y2="' + (CY - 176) + '" stroke="rgba(216,186,116,0.30)" stroke-width="0.7"/>');
 
     // 北斗
     var targetA = beidouAngle(c);
     var mZhi = monthZhiOf(c);
-    var restA = 238.7;
+    var restA = 120.7; // 基准图中天权→摇光方向角（0=正上，顺时针）
     var rot = targetA - restA;
-    var scale = 96;
+    var scale = 104;
     var starPts = BEIDOU.map(function (st) {
       return { n: st.n, m: st.m, x: CX + st.x * scale, y: CY + 18 + st.y * scale };
     });
@@ -278,23 +288,23 @@
       }).join(' ');
     }
     bd.push('<g transform="rotate(' + f(rot) + ' ' + CX + ' ' + (CY + 18) + ')">');
-    bd.push('<path d="' + polyPath(BOWL_PATH) + '" fill="none" stroke="rgba(160,196,255,0.42)" stroke-width="0.9"/>');
-    bd.push('<path d="' + polyPath(HANDLE_PATH) + '" fill="none" stroke="rgba(160,196,255,0.42)" stroke-width="0.9"/>');
+    bd.push('<path d="' + polyPath(BOWL_PATH) + '" fill="none" stroke="rgba(160,196,255,0.65)" stroke-width="1.3"/>');
+    bd.push('<path d="' + polyPath(HANDLE_PATH) + '" fill="none" stroke="rgba(160,196,255,0.65)" stroke-width="1.3"/>');
     starPts.forEach(function (sp, ix) {
-      bd.push('<circle cx="' + f(sp.x) + '" cy="' + f(sp.y) + '" r="' + f(9 * sp.m) + '" fill="#b6ccff" opacity="0.10" filter="url(#soft)"/>');
-      bd.push('<circle cx="' + f(sp.x) + '" cy="' + f(sp.y) + '" r="' + f(2.4 * sp.m) + '" fill="#eaf1ff"/>');
-      bd.push('<circle cx="' + f(sp.x) + '" cy="' + f(sp.y) + '" r="' + f(1.0 * sp.m) + '" fill="#ffffff"/>');
-      var lx = sp.x + (sp.x > CX ? 9 : -9);
-      bd.push('<text x="' + f(lx) + '" y="' + f(sp.y + 3) + '" text-anchor="' + (sp.x > CX ? 'start' : 'end') + '" fill="rgba(190,206,240,0.66)" font-size="9.5" letter-spacing="0.5">' + sp.n + '</text>');
+      bd.push('<circle cx="' + f(sp.x) + '" cy="' + f(sp.y) + '" r="' + f(9.5 * sp.m) + '" fill="#b6ccff" opacity="0.10" filter="url(#soft)"/>');
+      bd.push('<circle cx="' + f(sp.x) + '" cy="' + f(sp.y) + '" r="' + f(2.5 * sp.m) + '" fill="#e4ecfc"/>');
+      bd.push('<circle cx="' + f(sp.x) + '" cy="' + f(sp.y) + '" r="' + f(1.05 * sp.m) + '" fill="#ffffff"/>');
+      var lx = sp.x + (sp.x > CX ? 11 : -11);
+      bd.push('<text x="' + f(lx) + '" y="' + f(sp.y + 4) + '" text-anchor="' + (sp.x > CX ? 'start' : 'end') + '" fill="rgba(208,222,250,0.95)" font-size="11.5" letter-spacing="1">' + sp.n + '</text>');
     });
     bd.push('</g>');
     s.push('<g>' + bd.join('') + '</g>');
 
     // 北辰
-    s.push('<circle cx="500" cy="500" r="16" fill="url(#coreGrad)" opacity="0.7"/>');
-    s.push('<circle cx="500" cy="500" r="2.2" fill="#fffdf4"/>');
-    s.push('<text x="500" y="' + (CY + 192) + '" text-anchor="middle" fill="rgba(190,170,125,0.78)" font-size="12.5" letter-spacing="2">斗柄指' + mZhi + ' · ' + c.lunar.monthName + '建' + mZhi + '</text>');
-    s.push('<text x="500" y="' + (CY + 210) + '" text-anchor="middle" fill="rgba(140,137,128,0.7)" font-size="10" letter-spacing="1">北辰不动 · 众星拱之</text>');
+    s.push('<circle cx="500" cy="500" r="16" fill="url(#coreGrad)" opacity="0.55"/>');
+    s.push('<circle cx="500" cy="500" r="2.4" fill="#fffdf4"/>');
+    s.push('<text x="500" y="' + (CY + 200) + '" text-anchor="middle" fill="rgba(214,192,140,0.94)" font-size="14" letter-spacing="2.5">斗柄指' + mZhi + ' · ' + c.lunar.monthName + '建' + mZhi + '</text>');
+    s.push('<text x="500" y="' + (CY + 221) + '" text-anchor="middle" fill="rgba(150,146,136,0.85)" font-size="11" letter-spacing="1">北辰不动 · 众星拱之</text>');
 
     // 外缘
     s.push('<circle cx="500" cy="500" r="' + R_OUT + '" fill="none" stroke="rgba(216,186,116,0.45)" stroke-width="1.1"/>');

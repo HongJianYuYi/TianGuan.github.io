@@ -251,10 +251,14 @@ body {
 }
 .mini-btn:hover { color: #1a1408; background: var(--gold); border-color: var(--gold); }
 
+/* 时间步进：四钮均分一行 */
+.step-row .mini-btn { flex: 1 1 0; padding: 4px 0; }
+
 .cal-foot {
   margin-top: 6px; font-size: 10.5px; letter-spacing: .05em;
   color: var(--muted-2); min-height: 14px;
 }
+#gz-note { white-space: pre-line; }
 
 .loc-block { padding-top: 14px; border-top: 1px solid var(--line-soft); }
 
@@ -282,6 +286,10 @@ body {
 }
 .chart-wrap #chart { width: 100%; }
 .chart-wrap svg { width: 100%; height: auto; display: block; max-width: 1060px; margin: 0 auto; }
+/* 式盘 / 寻星 切换 */
+.chart-tabs { display: flex; gap: 8px; justify-content: center; margin-bottom: 8px; }
+.chart-tabs .mini-btn.on { color: #1a1408; background: var(--gold); border-color: var(--gold); }
+
 .chart-legend {
   display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: center;
   margin-top: 6px; padding-top: 10px;
@@ -305,12 +313,13 @@ body {
 .omen-table th {
   font-weight: 400; font-size: 10px; letter-spacing: .1em;
   color: var(--gold-dim);
-  text-align: left; padding: 6px 8px 6px 2px;
+  text-align: center; padding: 6px 4px;
   border-bottom: 1px solid var(--line);
   white-space: nowrap;
 }
 .omen-table td {
-  padding: 7px 8px 7px 2px;
+  padding: 7px 4px;
+  text-align: center;
   border-bottom: 1px solid rgba(201, 168, 96, .08);
   color: #d5cfc0;
   white-space: nowrap;
@@ -330,14 +339,24 @@ body {
 .omen-table .mo-ni { color: #d98a7e; }
 .omen-table .mo-liu { color: #e0b34e; }
 .omen-table .mo-fu { color: #7c828f; }
-/* 亮度（庙旺平落陷） */
-.omen-table .wx { text-align: center; }
-.omen-table .wx-miao { color: #f2d98f; }
-.omen-table .wx-wang { color: var(--gold-2); }
-.omen-table .wx-ping { color: #d5cfc0; }
-.omen-table .wx-luo { color: var(--muted); }
-.omen-table .wx-xian { color: #7c828f; }
+/* 占候：凌犯掩朱、守黄、位态素灰 */
+.omen-table .hou { text-align: center; font-size: 12px; }
+.omen-table .hou-ev { color: #d98a7e; }
+.omen-table .hou-shou { color: #e0b34e; }
+.omen-table .hou-pos { color: #d5cfc0; }
 .omen-table td.xz { color: #dcc488; font-size: 12px; }
+
+/* 高度列：地平线下灰显 */
+.omen-table td.alt-un { color: var(--muted-2); }
+
+/* 星点点击提示（触屏） */
+.star-tip {
+  position: fixed; z-index: 60; max-width: 264px;
+  background: rgba(9, 13, 26, .96); border: 1px solid var(--line);
+  border-radius: 4px; padding: 7px 11px;
+  color: var(--ivory); font-size: 12px; letter-spacing: .04em; line-height: 1.7;
+  pointer-events: none; box-shadow: 0 6px 24px rgba(0, 0, 0, .5);
+}
 
 .omen-extra {
   margin-top: 12px; padding: 10px 12px;

@@ -268,6 +268,29 @@
   }
 
   /* ---------- 综合起盘 ---------- */
+  // 位态之候（黄经差为断，合冲照距皆古法名目）：
+  // 内行星——合 / 晨见（西大距）/ 夕见（东大距）；外行星——合伏 / 冲 / 东西方照；太阴——朔弦望。
+  function houOf(key, plon, sunLon) {
+    var E = A.norm180(plon - sunLon);
+    var el = Math.abs(E);
+    if (key === 'mercury' || key === 'venus') {
+      var maxEl = key === 'mercury' ? 27.8 : 46.7;   // asin(a(1+e))
+      if (el < 3) return '合';
+      if (Math.abs(el - maxEl) < 2.5) return E > 0 ? '东大距' : '西大距';
+      return E > 0 ? '夕见' : '晨见';
+    }
+    if (key === 'moon') {
+      var p = A.norm360(plon - sunLon);
+      if (p < 45 || p >= 315) return '朔';
+      if (p < 135) return '上弦';
+      if (p < 225) return '望';
+      return '下弦';
+    }
+    if (el > 165) return '冲';
+    if (Math.abs(el - 90) < 20) return E > 0 ? '东方照' : '西方照';
+    return '';
+  }
+
   function computeChart(opt) {
     var y = opt.y, m = opt.m, d = opt.d, hh = opt.hh, mm = opt.mm;
     var lon = opt.lon, lat = opt.lat;
@@ -334,11 +357,12 @@
     for (var p = 0; p < defs.length; p++) {
       var def = defs[p];
       var st = bodyStateAt(def.key, jdClock);
-      // 行度：前后各半日黄经差（度/日）
-      var speed = A.norm180(bodyStateAt(def.key, jdClock + 0.5).lon - bodyStateAt(def.key, jdClock - 0.5).lon);
+      // 行度：前后各四分之一日黄经差（度/日），步长收窄以贴合瞬时速度，留期判定更准
+      var speed = A.norm180(bodyStateAt(def.key, jdClock + 0.25).lon - bodyStateAt(def.key, jdClock - 0.25).lon) * 2;
       var eq = A.eclToEqu(st.lon, st.lat, jdClock);
       var loc = locateXiu(eq.ra, ring);
       var ci = locateCi(eq.ra, ring, ciArcs);
+      var hb = A.equToHor(eq.ra, eq.dec, jdClock, lon, lat);
       bodies.push({
         key: def.key,
         name: def.name,
@@ -349,8 +373,11 @@
         lat: st.lat || 0,
         ra: eq.ra,
         dec: eq.dec,
+        alt: hb.alt,
+        az: hb.az,
         speed: speed,
         elong: Math.abs(A.norm180(st.lon - sun.lon)), // 距日角距（伏见之本）
+        hou: houOf(def.key, norm360(st.lon), sun.lon), // 位态之候（冲照大距晨夕见）
         xiu: loc.xiu,
         du: loc.du,
         zhi: loc.xiu.zhi,
@@ -362,6 +389,165 @@
     }
 
     var sectors = buildZhiSectors(ring);
+
+    // 恒星：J2000 平位置按当日历元岁差旋转，入宿与七政同口径
+    var stars = [];
+    if (window.TGStars) {
+      for (var si = 0; si < window.TGStars.length; si++) {
+        var st0 = window.TGStars[si];
+        var sp = A.precessJ2000(st0.ra, st0.dec, jdClock);
+        var sloc = locateXiu(sp.ra, ring);
+        stars.push({
+          name: st0.name,
+          bayer: st0.bayer,
+          ra: sp.ra,
+          dec: sp.dec,
+          mag: st0.mag,
+          dist: !!st0.xiu,   // 是否距星
+          xiu: sloc.xiu.name,
+          du: sloc.du
+        });
+      }
+    }
+
+    // 恒星地平坐标：高度角、方位、可见性（此刻，观测地）
+    for (var sj = 0; sj < stars.length; sj++) {
+      var hz = A.equToHor(stars[sj].ra, stars[sj].dec, jdClock, lon, lat);
+      stars[sj].alt = hz.alt;
+      stars[sj].az = hz.az;
+      stars[sj].vis = hz.alt > 0;
+    }
+
+    // 昏旦中星：昏 = 日没后三刻（约 45 分），旦 = 日出前三刻；
+    // 中星取该刻距子午圈最近的距星（时角最小）
+    var rs = A.sunRiseSet(y, m, d, lon, lat);
+    var dusk = rs.set != null ? rs.set + 0.03125 : null;
+    var dawn = rs.rise != null ? rs.rise - 0.03125 : null;
+    function centralStar(jdT) {
+      if (jdT == null || !stars.length) return null;
+      var lst = A.localSiderealTime(jdT, lon);
+      var best = null, bd = 999;
+      for (var k = 0; k < stars.length; k++) {
+        if (!stars[k].dist) continue;
+        var dh = Math.abs(A.norm180(stars[k].ra - lst));
+        if (dh < bd) { bd = dh; best = stars[k]; }
+      }
+      return best;
+    }
+    // 昏时斗柄实指：天极→摇光（η UMa）之大圆弧延长，过摇光交地平，
+    // 取其方位化十二支（北子南午，顺时针）。近天顶时方位角法失稳，故用向量法。
+    // 斗建占法以月建为断，此为昏时实测方位之注记，两不相混。
+    var ALKAID = { ra: 206.885, dec: 49.313 }; // J2000
+    function duskPointZhi(jdT) {
+      if (jdT == null) return null;
+      var d2r = Math.PI / 180;
+      var pp = A.precessJ2000(ALKAID.ra, ALKAID.dec, jdT);
+      var hz2 = A.equToHor(pp.ra, pp.dec, jdT, lon, lat);
+      var phi = lat * d2r, alt = hz2.alt * d2r, az = hz2.az * d2r;
+      // ENU 坐标：东 x、北 y、上 z；n 为天极方向，s 为摇光方向
+      var ny = Math.cos(phi), nz = Math.sin(phi);
+      var sx = Math.cos(alt) * Math.sin(az), sy = Math.cos(alt) * Math.cos(az), sz = Math.sin(alt);
+      var dot = ny * sy + nz * sz;
+      var ux = sx, uy = sy - ny * dot, uz = sz - nz * dot;
+      var ul = Math.sqrt(ux * ux + uy * uy + uz * uz);
+      if (ul < 1e-9) return null;
+      ux /= ul; uy /= ul; uz /= ul;
+      var tS = Math.acos(Math.min(1, Math.max(-1, dot))); // 天极至摇光的弧距
+      var t0 = Math.atan2(-nz, uz);                       // 大圆高度为零之解（其一）
+      var cands = [t0, t0 + Math.PI, t0 + 2 * Math.PI];
+      var tH = -1;
+      for (var ci2 = 0; ci2 < cands.length; ci2++) {
+        if (cands[ci2] > tS + 1e-9 && cands[ci2] < tS + Math.PI) { tH = cands[ci2]; break; }
+      }
+      if (tH < 0) return null;
+      var pe = ux * Math.sin(tH);
+      var pn = ny * Math.cos(tH) + uy * Math.sin(tH);
+      var G = norm360(Math.atan2(pe, pn) / d2r);
+      return D.ZHI[Math.round(G / 30) % 12];
+    }
+    var horizon = {
+      dusk: dusk, dawn: dawn,
+      duskStar: centralStar(dusk),
+      dawnStar: centralStar(dawn),
+      duskPoint: duskPointZhi(dusk)
+    };
+
+    // 凌犯守掩：七政与恒星的球面角距（haversine，小角度稳）
+    // 犯＝一度以内；凌＝0.15° 内（光芒相及）；掩＝月 0.3° 内（月体覆星）；
+    // 守＝行星值留且相距 5° 内（留而不去）。日与恒星不判（昼不可见）。
+    function sepDeg(ra1, dec1, ra2, dec2) {
+      var d2r = Math.PI / 180;
+      var s1 = Math.sin(dec1 * d2r), s2 = Math.sin(dec2 * d2r);
+      var c1 = Math.cos(dec1 * d2r), c2 = Math.cos(dec2 * d2r);
+      var dA = (ra1 - ra2) * d2r;
+      var h = Math.sin((dec1 - dec2) * d2r / 2); h *= h;
+      var k = Math.sin(dA / 2); h += c1 * c2 * k * k;
+      return 2 * Math.asin(Math.min(1, Math.sqrt(h))) / d2r;
+    }
+    // 昏旦可见性：太阳 −6° 上为昼（不见），−12°~−6° 为昏旦蒙影，其下为夜；
+    // 天体在地平线下则不见。古法占候皆昏旦夜观，故必注其可见与否。
+    var sunAltNow = bodies.filter(function (b) { return b.key === 'sun'; })[0];
+    sunAltNow = sunAltNow ? sunAltNow.alt : 90;
+    var bjHour = ((jdClock - 0.5 + 8 / 24) % 1) * 24;
+    var duskSide = bjHour >= 12;
+    function visLabel(a1, a2) {
+      if (sunAltNow > -6) return '昼不见';
+      if ((a1 != null && a1 <= 0) || (a2 != null && a2 <= 0)) return '地平线下';
+      if (sunAltNow > -12) return duskSide ? '昏可见' : '旦可见';
+      return '夜可见';
+    }
+    var approaches = [];
+    for (var bi = 0; bi < bodies.length; bi++) {
+      var bd0 = bodies[bi];
+      if (bd0.key === 'sun') continue;
+      for (var si2 = 0; si2 < stars.length; si2++) {
+        var sg = sepDeg(bd0.ra, bd0.dec, stars[si2].ra, stars[si2].dec);
+        var kind = null;
+        if (bd0.key === 'moon' && sg < 0.3) kind = '掩';
+        else if (sg < 0.15) kind = '凌';
+        else if (sg < 1.0) kind = '犯';
+        if (!kind && bd0.key !== 'moon' && Math.abs(bd0.speed) <= 0.015 && sg < 5) kind = '守';
+        if (kind) approaches.push({ body: bd0.name, key: bd0.key, star: stars[si2].name, xiu: stars[si2].xiu, deg: sg, kind: kind, vis: visLabel(bd0.alt, stars[si2].alt) });
+      }
+    }
+    // 七政互合：两两求角距，口径同上（犯一度、凌 0.15°、月掩 0.3°）；日不判。
+    // 主动方取行度快者（月最快，故月犯星居多），与恒星事通排入 approaches。
+    for (var pi = 0; pi < bodies.length; pi++) {
+      if (bodies[pi].key === 'sun') continue;
+      for (var pj = pi + 1; pj < bodies.length; pj++) {
+        if (bodies[pj].key === 'sun') continue;
+        var b1 = bodies[pi], b2 = bodies[pj];
+        var pg = sepDeg(b1.ra, b1.dec, b2.ra, b2.dec);
+        var pk = null;
+        if ((b1.key === 'moon' || b2.key === 'moon') && pg < 0.3) pk = '掩';
+        else if (pg < 0.15) pk = '凌';
+        else if (pg < 1.0) pk = '犯';
+        if (pk) {
+          var fast = Math.abs(b1.speed) >= Math.abs(b2.speed) ? b1 : b2;
+          var slow = fast === b1 ? b2 : b1;
+          approaches.push({ body: fast.name, key: fast.key, star: slow.name, xiu: slow.xiu.name, deg: pg, kind: pk, vis: visLabel(b1.alt, b2.alt) });
+        }
+      }
+    }
+    // 五星聚舍：五纬（辰星太白荧惑岁星填星）同宿为聚，三、四、五星皆书
+    var wuWei = bodies.filter(function (b) { return b.key !== 'sun' && b.key !== 'moon'; });
+    var byXiu = {};
+    wuWei.forEach(function (b) { (byXiu[b.xiu.name] = byXiu[b.xiu.name] || []).push(b.name); });
+    var gatherings = [];
+    Object.keys(byXiu).forEach(function (x) {
+      if (byXiu[x].length >= 3) {
+        // 聚舍可见性取组内最严：任一员在地平线下则不见
+        var minAlt = Math.min.apply(null, wuWei.filter(function (b) { return b.xiu.name === x; }).map(function (b) { return b.alt; }));
+        gatherings.push({ n: byXiu[x].length, xiu: x, stars: byXiu[x], vis: visLabel(minAlt, null) });
+      }
+    });
+    approaches.sort(function (x, y) { return x.deg - y.deg; });
+    // 每曜取其最近一事，供表格占候列
+    for (var ai = 0; ai < approaches.length; ai++) {
+      for (var bj = 0; bj < bodies.length; bj++) {
+        if (bodies[bj].key === approaches[ai].key && !bodies[bj].event) bodies[bj].event = approaches[ai];
+      }
+    }
 
     return {
       input: { y: y, m: m, d: d, hh: hh, mm: mm, lon: lon, lat: lat },
@@ -386,6 +572,10 @@
       ring: ring,
       sectors: sectors,
       ciArcs: ciArcs,
+      stars: stars,
+      horizon: horizon,
+      approaches: approaches,
+      gatherings: gatherings,
       sun: sun
     };
   }

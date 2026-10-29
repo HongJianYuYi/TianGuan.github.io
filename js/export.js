@@ -108,21 +108,21 @@
     s.push(T(126, 110, '究天人之际 · 通古今之变 · 成一家之言', 12.5, MUTED, { ls: 2 }));
     var meta = (el('meta-solar') ? el('meta-solar').textContent : '') + ' · ' + (el('meta-tst') ? el('meta-tst').textContent : '');
     s.push(T(1620, 84, meta, 12, MUTED, { anchor: 'end' }));
-    s.push(T(1620, 108, '七政四余 · 二十八宿分野', 10.5, MUTED2, { anchor: 'end', ls: 2 }));
+    s.push(T(1620, 108, '实星占验 · 二十八宿分野', 10.5, MUTED2, { anchor: 'end', ls: 2 }));
     s.push(hline(40, 1620, 138, LINE));
     return s.join('');
   }
 
-  /* ---------- 面板通用 ---------- */
+  /* ---------- 面板通用（题 13px 居左，铭 10px 居右，如页面） ---------- */
   function panelChrome(x, y, w, h, name, em) {
     return rect(x, y, w, h, 'rgba(12,18,36,0.82)', LINE, 2) +
-      T(x + 20, y + 36, name, 17, GOLD2, { ls: 3 }) +
-      T(x + 20 + name.length * 23 + 16, y + 35, em, 10.5, GOLD_DIM, { ls: 1 }) +
+      T(x + 20, y + 34, name, 13, GOLD, { ls: 4 }) +
+      T(x + w - 20, y + 33, em, 10, GOLD_DIM, { anchor: 'end', ls: 2 }) +
       hline(x + 20, x + w - 20, y + 48, LINE_SOFT);
   }
 
-  /* ---------- 推步区 ---------- */
-  function drawInput(x, y0, w) {
+  /* ---------- 推步区（fillH 给定面板高时，读数区如页面 margin-top:auto 贴底） ---------- */
+  function drawInput(x, y0, w, fillH) {
     var s = [], y = y0 + 72;
     var blocks = document.querySelectorAll('#sec-input .cal-block');
     Array.prototype.forEach.call(blocks, function (blk, bi) {
@@ -133,18 +133,19 @@
       y += 24;
       var rows = blk.querySelectorAll('.row');
       Array.prototype.forEach.call(rows, function (row) {
+        if (row.classList.contains('step-row')) return; // 时间步进为推演之具，不入案例图
         var parts = [];
         row.querySelectorAll('.fld').forEach(function (fld) { parts.push(fldText(fld)); });
-        var btn = row.querySelector('.mini-btn:not([hidden])');
-        if (btn) parts.push('［' + btn.textContent + '］');
-        s.push(T(x + 20, y, parts.join('　'), 12.5, IVORY));
-        y += 23;
+        s.push(T(x + 20, y, parts.join('　'), 14, IVORY));
+        y += 24;
       });
       var note = blk.querySelector('.cal-foot');
       if (note && note.textContent.trim() && note.textContent.trim() !== '—') {
-        wrap(note.textContent.trim(), 30).forEach(function (ln) {
-          s.push(T(x + 20, y, ln, 10, MUTED));
-          y += 17;
+        note.textContent.trim().split('\n').forEach(function (para) {
+          wrap(para, 30).forEach(function (ln) {
+            s.push(T(x + 20, y, ln, 10, MUTED));
+            y += 17;
+          });
         });
       }
       if (bi < blocks.length - 1) { y += 4; s.push(hline(x + 20, x + w - 20, y)); }
@@ -153,12 +154,13 @@
     // 读数区
     var ros = document.querySelectorAll('#sec-input .ro-line');
     var roH = ros.length * 21 + 18;
+    if (fillH && y0 + fillH - 16 - roH > y) y = y0 + fillH - 16 - roH;
     s.push(rect(x + 20, y, w - 40, roH, 'rgba(0,0,0,0.18)', LINE_SOFT));
     y += 22;
-    Array.prototype.forEach.call(ros, function (ro) {
+    Array.prototype.forEach.call(ros, function (ro, ri) {
       var lb = ro.querySelector('span'), vl = ro.querySelector('b');
-      s.push(T(x + 32, y, lb ? lb.textContent : '', 10.5, MUTED));
-      s.push(T(x + w - 32, y, vl ? vl.textContent : '', 11.5, GOLD2, { anchor: 'end' }));
+      s.push(T(x + 32, y, lb ? lb.textContent : '', 11, MUTED));
+      s.push(T(x + w - 32, y, vl ? vl.textContent : '', ri === 0 ? 15 : 13, ri === 0 ? '#f7e6b8' : GOLD2, { anchor: 'end' }));
       y += 21;
     });
     return { svg: s.join(''), h: y - y0 + 16 };
@@ -174,19 +176,24 @@
     var legend = [
       ['lg-o', '二十八宿'], ['lg-t', '十二地支分野'], ['lg-p', '七政行度'], ['lg-c', '中宫天极星']
     ];
-    var lx = x + 20;
+    // 图例整行居中，尾注随其后，如页面 flex 布局
+    var noteTxt = '上南下北 · 左东右西 · 地支顺时针';
+    var totalW = 0;
+    legend.forEach(function (lg) { totalW += 14 + lg[1].length * 11 + 16; });
+    totalW += noteTxt.length * 11;
+    var lx = x + 20 + Math.max(0, (cw - totalW) / 2);
     legend.forEach(function (lg) {
       var col = cssColor('.chart-legend .' + lg[0]);
       s.push('<rect x="' + f(lx) + '" y="' + f(ly - 8) + '" width="9" height="9" fill="' + col + '" rx="1"/>');
-      s.push(T(lx + 14, ly, lg[1], 10.5, MUTED));
-      lx += 14 + lg[1].length * 11 + 18;
+      s.push(T(lx + 14, ly, lg[1], 11, MUTED));
+      lx += 14 + lg[1].length * 11 + 16;
     });
-    s.push(T(x + w - 20, ly, '上南下北 · 左东右西 · 地支顺时针', 9.5, MUTED2, { anchor: 'end' }));
+    s.push(T(lx, ly, noteTxt, 11, 'rgba(190,170,125,0.55)'));
     return { svg: s.join(''), h: 60 + cw + 44 };
   }
 
   /* ---------- 占验区 ---------- */
-  function drawOmen(x, y0, w, record) {
+  function drawOmen(x, y0, w, record, fillH) {
     var s = [], y = y0 + 66;
     var iw = w - 40;
     // 表格
@@ -197,39 +204,58 @@
       tr.querySelectorAll('td').forEach(function (td) { r.push(td.textContent); });
       rows.push(r);
     });
-    var colW = [42, 30, 44, 50, 34, 38, 34, 0]; // 星曜/亮度/行度/赤经/星次/入宿/宿度/分野
-    colW[7] = iw - (42 + 30 + 44 + 50 + 34 + 38 + 34);
-    var headH = 24, rowH = 28;
+    // 斗建时序与断语文本先行折算，供表格拉伸定行高
+    var note = el('omen-note') ? el('omen-note').textContent.trim() : '';
+    var nLines = wrap(note, 29);
+    var exH = 26 + nLines.length * 17 + 12;
+    var recTxt = (record || '').trim() || '记所占之事、所得之验……';
+    var rLines = [];
+    String(recTxt).split('\n').forEach(function (p) {
+      wrap(p, 28).forEach(function (ln) { rLines.push(ln); });
+    });
+    if (rLines.length > 10) rLines = rLines.slice(0, 10);
+    var recH = Math.max(rLines.length, 3) * 18 + 16;
+    // 列宽仿页面自动布局：各列按内容定基宽，余宽均分九列
+    var baseW = [46, 56, 46, 52, 48, 32, 22, 32, 30]; // 星曜/占候/行度/赤经/高度/星次/入宿/宿度/分野
+    var extra = (iw - 364) / 9;
+    var colW = baseW.map(function (bw) { return bw + extra; });
+    // 页面表格 height:100% 随面板拉伸，导出同之
+    var headH = 24, rowH = 26;
+    if (fillH) {
+      var fixed = 66 + headH + 16 + exH + 16 + 12 + recH + 16 + 34 + 16;
+      rowH = Math.max(26, (fillH - fixed) / rows.length);
+    }
     var tblH = headH + rows.length * rowH;
     s.push(rect(x + 20, y, iw, tblH, 'rgba(150,180,235,0.03)', LINE_SOFT));
     var cx0 = x + 20;
-    var xs = [cx0 + 6];
+    var xs = [cx0];
     for (var i = 0; i < colW.length - 1; i++) xs.push(xs[i] + colW[i]);
+    // 页面表头与数据均居中，故取列中心、middle 锚点
+    var mids = colW.map(function (cw, i) { return xs[i] + cw / 2; });
     s.push(rect(cx0, y, iw, headH, 'rgba(216,186,116,0.07)'));
-    ths.forEach(function (t, i) { s.push(T(xs[i], y + 16, t, 9.5, GOLD_DIM)); });
-    // 单元格配色与界面一致：亮度分庙旺五色、行度分顺逆留伏、宿名泥金
-    var WX_COLOR = { '庙': '#f2d98f', '旺': '#f0d79b', '平': '#d5cfc0', '落': '#96948b', '陷': '#7c828f' };
+    ths.forEach(function (t, i) { s.push(T(mids[i], y + 16, t, 10, GOLD_DIM, { anchor: 'middle', ls: 1 })); });
+    // 单元格配色与界面一致：占候分事/态、行度分顺逆留伏、星次泥金、宿名泥金
     var MO_COLOR = { '顺': '#e6d7ae', '逆': '#d98a7e', '留': '#e0b34e', '伏': '#7c828f' };
     rows.forEach(function (r, ri) {
       var ry = y + headH + ri * rowH;
       if (ri % 2 === 0) s.push(rect(cx0, ry, iw, rowH, 'rgba(216,186,116,0.03)'));
       s.push(hline(cx0, cx0 + iw, ry, 'rgba(201,168,96,0.10)'));
       r.forEach(function (cell, ci) {
-        var col = IVORY;
-        if (ci === 0) col = GOLD2;
-        else if (ci === 1) col = WX_COLOR[cell.trim()] || IVORY;
+        var col = '#d5cfc0'; // 页面 td 默认色
+        if (ci === 0) col = IVORY;
+        else if (ci === 1) {
+          var c0 = cell.charAt(0);
+          col = (c0 === '犯' || c0 === '凌' || c0 === '掩') ? '#d98a7e' : (c0 === '守' ? '#e0b34e' : '#d5cfc0');
+        }
         else if (ci === 2) col = MO_COLOR[cell.charAt(0)] || '#e6d7ae';
         else if (ci === 3 || ci === 6) col = '#e6d7ae';
         else if (ci === 4) col = '#dcc488'; // 星次
         else if (ci === 5) col = GOLD2;     // 入宿
-        s.push(T(xs[ci], ry + 18, cell, ci === 0 ? 11 : 10, col));
+        s.push(T(mids[ci], ry + rowH / 2 + 4, cell, 11, col, { anchor: 'middle' }));
       });
     });
     y += tblH + 16;
     // 斗建时序
-    var note = el('omen-note') ? el('omen-note').textContent.trim() : '';
-    var nLines = wrap(note, 29);
-    var exH = 26 + nLines.length * 17 + 12;
     s.push(rect(x + 20, y, iw, exH, 'rgba(220,187,112,0.03)'));
     s.push(rect(x + 20, y, 2, exH, 'rgba(201,168,96,0.35)'));
     s.push(T(x + 32, y + 18, '斗建时序', 10, GOLD_DIM, { ls: 2 }));
@@ -239,13 +265,6 @@
     s.push(T(x + 20, y, '断语记录', 12, GOLD));
     s.push(T(x + w - 20, y, '自动留存于本机', 9, MUTED2, { anchor: 'end' }));
     y += 12;
-    var recTxt = (record || '').trim() || '记所占之事、所得之验……';
-    var rLines = [];
-    String(recTxt).split('\n').forEach(function (p) {
-      wrap(p, 28).forEach(function (ln) { rLines.push(ln); });
-    });
-    if (rLines.length > 10) rLines = rLines.slice(0, 10);
-    var recH = Math.max(rLines.length, 3) * 18 + 16;
     s.push(rect(x + 20, y, iw, recH, 'rgba(0,0,0,0.25)', LINE_SOFT));
     rLines.forEach(function (ln, i) {
       s.push(T(x + 30, y + 21 + i * 18, ln, 10.5, record && record.trim() ? IVORY : '#565a63'));
@@ -268,9 +287,9 @@
     s.push(hline(40, W - 40, y, LINE_SOFT));
     y += 22;
     Array.prototype.forEach.call(ps, function (p) {
-      wrap(p.textContent.trim(), 72).forEach(function (ln) {
-        s.push(T(W / 2, y, ln, 10, MUTED2, { anchor: 'middle' }));
-        y += 17;
+      wrap(p.textContent.trim(), 100).forEach(function (ln) {
+        s.push(T(40, y, ln, 10.5, '#5b5f6a'));
+        y += 18;
       });
       y += 2;
     });
@@ -287,6 +306,9 @@
     var chart = drawChart(c, colX[1], y0, colW[1]);
     var omen = drawOmen(colX[2], y0, colW[2], record);
     var panelH = Math.max(input.h, chart.h, omen.h);
+    // 页面三栏等高（grid stretch）：推步读数贴底、占验表格拉伸，重绘以填满面板
+    input = drawInput(colX[0], y0, colW[0], panelH);
+    omen = drawOmen(colX[2], y0, colW[2], record, panelH);
 
     var foot = drawFooter(y0 + panelH + 18, W);
     var H = foot.h + PAD;

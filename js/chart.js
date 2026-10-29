@@ -178,6 +178,28 @@
       s.push('<line x1="' + f(pa[0]) + '" y1="' + f(pa[1]) + '" x2="' + f(pb[0]) + '" y2="' + f(pb[1]) + '" stroke="rgba(216,186,116,0.34)" stroke-width="0.8"/>');
     });
 
+    // 实星层：距星与名星当日位置（岁差已当日化）；赤纬映作半径微差，亮星带晕
+    if (c.stars && c.stars.length) {
+      var starEls = [];
+      c.stars.forEach(function (st) {
+        var a = ang(st.ra);
+        var r = 406 - st.dec * 0.33;
+        if (r < 395) r = 395;
+        if (r > 421) r = 421;
+        var p = pt(r, a);
+        var sr = Math.max(1.3, 3.0 - 0.62 * st.mag);
+        var col = st.dist ? '#eeddab' : '#ccd9f5';
+        var dimOp = (st.vis === false) ? ' opacity="0.22"' : '';
+        var tipTxt = st.name + '（' + st.bayer + '）· ' + st.mag.toFixed(1) + ' 等' + (st.mag >= 4 ? '（暗星，城郭难见）' : '') + ' · 入 ' + st.xiu + ' ' + st.du.toFixed(1) + ' 度' +
+          (st.alt != null ? ' · 高度 ' + st.alt.toFixed(0) + '°' + (st.vis ? '' : '（地平线下）') : '');
+        starEls.push('<circle cx="' + f(p[0]) + '" cy="' + f(p[1]) + '" r="' + f(sr * 3.2) + '" fill="' + col + '" opacity="' + (st.vis === false ? 0.045 : 0.13) + '"/>');
+        starEls.push('<circle cx="' + f(p[0]) + '" cy="' + f(p[1]) + '" r="' + f(sr) + '" fill="' + col + '"' + (st.dist ? ' stroke="rgba(232,217,174,0.5)" stroke-width="0.5"' : '') + dimOp + '/>');
+        // 悬停命中区：透明大圆，小星点也能稳定触发提示；class 供点击提示委托
+        starEls.push('<circle class="st-hit" data-tip="' + tipTxt + '" cx="' + f(p[0]) + '" cy="' + f(p[1]) + '" r="11" fill="rgba(0,0,0,0.001)"><title>' + tipTxt + '</title></circle>');
+      });
+      s.push('<g>' + starEls.join('') + '</g>');
+    }
+
     // 宿名
     ring.forEach(function (x) {
       var a = ang(x.mid);
@@ -268,12 +290,11 @@
     }
     s.push('<g>' + innerStars.join('') + '</g>');
 
-    s.push('<text x="500" y="' + (CY - 192) + '" text-anchor="middle" fill="rgba(238,220,172,0.96)" font-size="20" letter-spacing="8">中宫天极星</text>');
-    s.push('<line x1="448" y1="' + (CY - 176) + '" x2="552" y2="' + (CY - 176) + '" stroke="rgba(216,186,116,0.30)" stroke-width="0.7"/>');
+    s.push('<text x="500" y="' + (CY - 188) + '" text-anchor="middle" fill="#f2e0b0" font-size="27" letter-spacing="11">中宫天极星</text>');
+    s.push('<line x1="434" y1="' + (CY - 172) + '" x2="566" y2="' + (CY - 172) + '" stroke="rgba(216,186,116,0.42)" stroke-width="1"/>');
 
     // 北斗
     var targetA = beidouAngle(c);
-    var mZhi = monthZhiOf(c);
     var restA = 120.7; // 基准图中天权→摇光方向角（0=正上，顺时针）
     var rot = targetA - restA;
     var scale = 104;
@@ -288,14 +309,16 @@
       }).join(' ');
     }
     bd.push('<g transform="rotate(' + f(rot) + ' ' + CX + ' ' + (CY + 18) + ')">');
-    bd.push('<path d="' + polyPath(BOWL_PATH) + '" fill="none" stroke="rgba(160,196,255,0.65)" stroke-width="1.3"/>');
-    bd.push('<path d="' + polyPath(HANDLE_PATH) + '" fill="none" stroke="rgba(160,196,255,0.65)" stroke-width="1.3"/>');
+    bd.push('<path d="' + polyPath(BOWL_PATH) + '" fill="none" stroke="rgba(170,205,255,0.85)" stroke-width="1.6"/>');
+    bd.push('<path d="' + polyPath(HANDLE_PATH) + '" fill="none" stroke="rgba(170,205,255,0.85)" stroke-width="1.6"/>');
+    var BD_BAYER = { '天枢': 'α UMa · 北斗一', '天璇': 'β UMa · 北斗二', '天玑': 'γ UMa · 北斗三', '天权': 'δ UMa · 北斗四', '玉衡': 'ε UMa · 北斗五', '开阳': 'ζ UMa · 北斗六', '摇光': 'η UMa · 北斗七' };
     starPts.forEach(function (sp, ix) {
       bd.push('<circle cx="' + f(sp.x) + '" cy="' + f(sp.y) + '" r="' + f(9.5 * sp.m) + '" fill="#b6ccff" opacity="0.10" filter="url(#soft)"/>');
       bd.push('<circle cx="' + f(sp.x) + '" cy="' + f(sp.y) + '" r="' + f(2.5 * sp.m) + '" fill="#e4ecfc"/>');
       bd.push('<circle cx="' + f(sp.x) + '" cy="' + f(sp.y) + '" r="' + f(1.05 * sp.m) + '" fill="#ffffff"/>');
+      bd.push('<circle class="st-hit" data-tip="' + sp.n + '（' + BD_BAYER[sp.n] + '）" cx="' + f(sp.x) + '" cy="' + f(sp.y) + '" r="10" fill="rgba(0,0,0,0.001)"><title>' + sp.n + '（' + BD_BAYER[sp.n] + '）</title></circle>');
       var lx = sp.x + (sp.x > CX ? 11 : -11);
-      bd.push('<text x="' + f(lx) + '" y="' + f(sp.y + 4) + '" text-anchor="' + (sp.x > CX ? 'start' : 'end') + '" fill="rgba(208,222,250,0.95)" font-size="11.5" letter-spacing="1">' + sp.n + '</text>');
+      bd.push('<text x="' + f(lx) + '" y="' + f(sp.y + 5) + '" text-anchor="' + (sp.x > CX ? 'start' : 'end') + '" fill="#d8e4fc" font-size="13.5" letter-spacing="1.5">' + sp.n + '</text>');
     });
     bd.push('</g>');
     s.push('<g>' + bd.join('') + '</g>');
@@ -303,8 +326,6 @@
     // 北辰
     s.push('<circle cx="500" cy="500" r="16" fill="url(#coreGrad)" opacity="0.55"/>');
     s.push('<circle cx="500" cy="500" r="2.4" fill="#fffdf4"/>');
-    s.push('<text x="500" y="' + (CY + 200) + '" text-anchor="middle" fill="rgba(214,192,140,0.94)" font-size="14" letter-spacing="2.5">斗柄指' + mZhi + ' · ' + c.lunar.monthName + '建' + mZhi + '</text>');
-    s.push('<text x="500" y="' + (CY + 221) + '" text-anchor="middle" fill="rgba(150,146,136,0.85)" font-size="11" letter-spacing="1">北辰不动 · 众星拱之</text>');
 
     // 外缘
     s.push('<circle cx="500" cy="500" r="' + R_OUT + '" fill="none" stroke="rgba(216,186,116,0.45)" stroke-width="1.1"/>');
@@ -321,9 +342,108 @@
       out.defs + out.body + '</svg>';
   }
 
+  /* ===== 地平圈寻星盘 =====
+   * 面南而立之见：南上北下、东左西右，与式盘同向。
+   * 半径线性映高度（外圈地平 0°、心为天顶 90°），方位自南起顺时针（方位角 −180°）。
+   * 地平线下之星不画。北斗七星按当日历元岁差旋转后投出（式盘内盘之北斗为符号，此为实况）。
+   */
+  var BD_EQU = [
+    { n: '天枢', ra: 165.932, dec: 61.751, m: 1.8 },
+    { n: '天璇', ra: 165.460, dec: 56.382, m: 2.4 },
+    { n: '天玑', ra: 178.458, dec: 53.695, m: 2.4 },
+    { n: '天权', ra: 183.857, dec: 57.033, m: 3.3 },
+    { n: '玉衡', ra: 193.507, dec: 55.960, m: 1.8 },
+    { n: '开阳', ra: 200.981, dec: 54.925, m: 2.2 },
+    { n: '摇光', ra: 206.885, dec: 49.313, m: 1.9 }
+  ];
+  var DIR8N = ['北', '东北', '东', '东南', '南', '西南', '西', '西北'];
+  function dirAz(az) { return DIR8N[Math.round(norm360(az) / 45) % 8]; }
+
+  function horizonSvg(c) {
+    var R = 430;
+    function hp(alt, az) { return pt(R * (1 - alt / 90), az - 180); }
+    var lon = c.input.lon, lat = c.input.lat;
+    var s = [];
+    s.push('<defs><radialGradient id="horGrad" cx="50%" cy="50%" r="52%">' +
+      '<stop offset="0%" stop-color="#101a36"/>' +
+      '<stop offset="70%" stop-color="#0a1124"/>' +
+      '<stop offset="100%" stop-color="#05080f"/>' +
+      '</radialGradient></defs>');
+    s.push('<circle cx="500" cy="500" r="' + R + '" fill="url(#horGrad)" stroke="rgba(216,186,116,0.45)" stroke-width="1.1"/>');
+    s.push('<circle cx="500" cy="500" r="' + (R + 4) + '" fill="none" stroke="rgba(216,186,116,0.18)" stroke-width="0.6"/>');
+    // 高度圈（30°、60°，虚线），度数标于南中天线，描底护字
+    [30, 60].forEach(function (a) {
+      var rr = R * (1 - a / 90);
+      s.push('<circle cx="500" cy="500" r="' + f(rr) + '" fill="none" stroke="rgba(150,180,235,0.34)" stroke-width="0.9" stroke-dasharray="4 6"/>');
+      var pl = hp(a, 180);
+      s.push('<text x="' + f(pl[0] + 10) + '" y="' + f(pl[1]) + '" fill="rgba(190,205,240,0.85)" font-size="13" paint-order="stroke" stroke="#05080f" stroke-width="3">' + a + '°</text>');
+    });
+    // 四正线（子午、卯酉）
+    [0, 90].forEach(function (off) {
+      var p1 = hp(0, off), p2 = hp(0, off + 180);
+      s.push('<line x1="' + f(p1[0]) + '" y1="' + f(p1[1]) + '" x2="' + f(p2[0]) + '" y2="' + f(p2[1]) + '" stroke="rgba(216,186,116,0.26)" stroke-width="0.8"/>');
+    });
+    // 天顶
+    s.push('<circle cx="500" cy="500" r="3" fill="rgba(240,215,155,0.9)"/>');
+    s.push('<text x="500" y="480" text-anchor="middle" fill="rgba(240,215,155,0.85)" font-size="13" letter-spacing="3">天顶</text>');
+    // 八方：四正亮金大字，四维次之，与式盘金字同调
+    ['南', '西南', '西', '西北', '北', '东北', '东', '东南'].forEach(function (nm, i) {
+      var p = pt(R + 30, i * 45);
+      var main = i % 2 === 0;
+      s.push('<text x="' + f(p[0]) + '" y="' + f(p[1]) + '" text-anchor="middle" dominant-baseline="middle" fill="' + (main ? (i === 0 ? '#f0d79b' : 'rgba(240,215,155,0.85)') : 'rgba(220,187,112,0.62)') + '" font-size="' + (i === 0 ? 22 : (main ? 18 : 14)) + '">' + nm + '</text>');
+    });
+    // 恒星（地上者）
+    if (c.stars) c.stars.forEach(function (st) {
+      if (st.alt == null || st.alt <= 0) return;
+      var p = hp(st.alt, st.az);
+      var sr = Math.max(1.3, 3.0 - 0.62 * st.mag);
+      var col = st.dist ? '#eeddab' : '#ccd9f5';
+      var tipTxt = st.name + '（' + st.bayer + '）· ' + st.mag.toFixed(1) + ' 等 · 高度 ' + st.alt.toFixed(0) + '° · ' + dirAz(st.az) + ' ' + st.az.toFixed(0) + '°';
+      s.push('<circle cx="' + f(p[0]) + '" cy="' + f(p[1]) + '" r="' + f(sr * 3.2) + '" fill="' + col + '" opacity="0.13"/>');
+      s.push('<circle cx="' + f(p[0]) + '" cy="' + f(p[1]) + '" r="' + f(sr) + '" fill="' + col + '"/>');
+      s.push('<circle class="st-hit" data-tip="' + tipTxt + '" cx="' + f(p[0]) + '" cy="' + f(p[1]) + '" r="11" fill="rgba(0,0,0,0.001)"><title>' + tipTxt + '</title></circle>');
+    });
+    // 北斗实况（勺魁勺柄连线，只连地上之段）
+    var A2 = window.TGAstro;
+    var bdPts = BD_EQU.map(function (b) {
+      var pp = A2.precessJ2000(b.ra, b.dec, c.jd);
+      var hz = A2.equToHor(pp.ra, pp.dec, c.jd, lon, lat);
+      return { n: b.n, m: b.m, hz: hz };
+    });
+    function bdLine(path) {
+      for (var i = 0; i + 1 < path.length; i++) {
+        var a = bdPts[path[i]], b2 = bdPts[path[i + 1]];
+        if (a.hz.alt <= 0 || b2.hz.alt <= 0) continue;
+        var p1 = hp(a.hz.alt, a.hz.az), p2 = hp(b2.hz.alt, b2.hz.az);
+        s.push('<line x1="' + f(p1[0]) + '" y1="' + f(p1[1]) + '" x2="' + f(p2[0]) + '" y2="' + f(p2[1]) + '" stroke="rgba(170,205,255,0.8)" stroke-width="1.8" stroke-linecap="round"/>');
+      }
+    }
+    bdLine(BOWL_PATH); bdLine(HANDLE_PATH);
+    bdPts.forEach(function (b) {
+      if (b.hz.alt <= 0) return;
+      var p = hp(b.hz.alt, b.hz.az);
+      var tipTxt = b.n + ' · 高度 ' + b.hz.alt.toFixed(0) + '° · ' + dirAz(b.hz.az) + ' ' + b.hz.az.toFixed(0) + '°';
+      s.push('<circle cx="' + f(p[0]) + '" cy="' + f(p[1]) + '" r="' + f(Math.max(1.8, 3.2 - 0.62 * b.m)) + '" fill="#d8e4fc"/>');
+      s.push('<circle class="st-hit" data-tip="' + tipTxt + '" cx="' + f(p[0]) + '" cy="' + f(p[1]) + '" r="11" fill="rgba(0,0,0,0.001)"><title>' + tipTxt + '</title></circle>');
+    });
+    // 七政（地上者，字形加名注，描底护字）
+    c.bodies.forEach(function (b) {
+      if (b.alt == null || b.alt <= 0) return;
+      var p = hp(b.alt, b.az);
+      var tipTxt = b.name + ' · 高度 ' + b.alt.toFixed(0) + '° · ' + dirAz(b.az) + ' ' + b.az.toFixed(0) + '° · 入 ' + b.xiu.name + '宿';
+      s.push('<text x="' + f(p[0]) + '" y="' + f(p[1]) + '" text-anchor="middle" dominant-baseline="middle" font-size="25" fill="' + b.color + '" paint-order="stroke" stroke="#05080f" stroke-width="3.5">' + b.glyph + '</text>');
+      s.push('<text x="' + f(p[0]) + '" y="' + f(p[1] + 24) + '" text-anchor="middle" fill="rgba(236,229,212,0.85)" font-size="13" paint-order="stroke" stroke="#05080f" stroke-width="3">' + b.name + '</text>');
+      s.push('<circle class="st-hit" data-tip="' + tipTxt + '" cx="' + f(p[0]) + '" cy="' + f(p[1]) + '" r="14" fill="rgba(0,0,0,0.001)"><title>' + tipTxt + '</title></circle>');
+    });
+    // 盘底注记
+    s.push('<text x="500" y="' + (CY + R + 56) + '" text-anchor="middle" fill="rgba(200,170,100,0.72)" font-size="14" letter-spacing="3">中天在南 · 面南仰观 · 虚线为三十、六十度高度圈</text>');
+    return '<svg viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="地平圈寻星盘">' + s.join('') + '</svg>';
+  }
+
   window.TGChart = {
     build: build,
     svg: svg,
+    horizon: horizonSvg,
     beidouAngle: beidouAngle,
     monthZhi: monthZhiOf,
     dirName: dirName,

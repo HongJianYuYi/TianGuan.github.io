@@ -5,9 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>天官太乙式</title>
 <meta name="description" content="以《史记·天官书》星官体系为骨、取古式盘之制的中式实星星盘。公历、农历、干支历三历互推，真太阳时定时，七政以赤经入二十八宿，十二次依《汉书·律历志》次度表。">
-<link rel="icon" type="image/svg+xml" href="favicon.svg?v=1.4.3">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=1.4.3">
-<link rel="stylesheet" href="css/style.css?v=1.4.3">
+<link rel="manifest" href="manifest.webmanifest?v=1.19.1">
+<meta name="theme-color" content="#0a0f1e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="太乙式">
+<link rel="icon" type="image/svg+xml" href="favicon.svg?v=1.19.1">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=1.19.1">
+<link rel="stylesheet" href="css/style.css?v=1.19.1">
 </head>
 <body>
 
@@ -46,6 +51,12 @@
         <label class="fld"><input id="sol-hh" type="number" min="0" max="23" step="1" value="14"><span>时</span></label>
         <label class="fld"><input id="sol-mm" type="number" min="0" max="59" step="1" value="30"><span>分</span></label>
         <button class="mini-btn" id="btn-now" type="button">此刻</button>
+      </div>
+      <div class="row step-row">
+        <button class="mini-btn" id="step-d-prev" type="button">− 一日</button>
+        <button class="mini-btn" id="step-h-prev" type="button">− 一时</button>
+        <button class="mini-btn" id="step-h-next" type="button">＋ 一时</button>
+        <button class="mini-btn" id="step-d-next" type="button">＋ 一日</button>
       </div>
     </div>
 
@@ -97,14 +108,23 @@
   <section class="panel panel-chart" id="sec-chart">
     <h2 class="panel-title"><span>式盘区</span><em>璇玑玉衡·以齐七政</em></h2>
     <div class="chart-wrap">
+      <div class="chart-tabs">
+        <button class="mini-btn on" id="tab-shi" type="button">占星</button>
+        <button class="mini-btn" id="tab-hor" type="button">寻星</button>
+      </div>
       <div id="chart"></div>
     </div>
-    <div class="chart-legend">
+    <div class="chart-legend" id="chart-legend">
       <span><i class="lg-o"></i>二十八宿</span>
       <span><i class="lg-t"></i>十二地支分野</span>
       <span><i class="lg-p"></i>七政行度</span>
       <span><i class="lg-c"></i>中宫天极星</span>
       <span class="lg-note">上南下北 · 左东右西 · 地支顺时针</span>
+    </div>
+    <div class="chart-legend" id="chart-legend-hor" hidden>
+      <span><i class="lg-p"></i>七政</span>
+      <span><i class="lg-c"></i>北斗实况</span>
+      <span class="lg-note">地平圈寻星盘 · 中天在南 · 面南仰观</span>
     </div>
   </section>
 
@@ -116,9 +136,10 @@
         <thead>
           <tr>
             <th>星曜</th>
-            <th>亮度</th>
+            <th>占候</th>
             <th>行度</th>
             <th>赤经</th>
+            <th>高度</th>
             <th>星次</th>
             <th>入宿</th>
             <th>宿度</th>
@@ -146,15 +167,17 @@
 
 <footer class="foot">
   <p>宿度依古宿制（二十八宿古度合 365.25 度），入宿以赤道为断、角宿起于角宿一赤经，一遵古法；十二次依《汉书·律历志》次度表，界穿宿而过。七政以现代星历推步，视黄经与 astronomy-engine 对照误差小于一角分，节气时刻约差数分钟。日柱以真太阳时子正前换日，干支年以立春为界。</p>
-  <p class="foot-ver">天官太乙式 · v1.4.3</p>
+  <p class="foot-ver">天官太乙式 · v1.19.1</p>
 </footer>
 
-<script src="js/data/data.js?v=1.4.3"></script>
-<script src="js/data/regions.js?v=1.4.3"></script>
-<script src="js/astro.js?v=1.4.3"></script>
-<script src="js/calendar.js?v=1.4.3"></script>
-<script src="js/chart.js?v=1.4.3"></script>
-<script src="js/export.js?v=1.4.3"></script>
-<script src="js/app.js?v=1.4.3"></script>
+<script src="js/data/data.js?v=1.19.1"></script>
+<script src="js/data/regions.js?v=1.19.1"></script>
+<script src="js/data/stars.js?v=1.19.1"></script>
+<script src="js/astro.js?v=1.19.1"></script>
+<script src="js/calendar.js?v=1.19.1"></script>
+<script src="js/chart.js?v=1.19.1"></script>
+<script src="js/export.js?v=1.19.1"></script>
+<script src="js/app.js?v=1.19.1"></script>
+  <div class="star-tip" id="star-tip" hidden></div>
 </body>
 </html>

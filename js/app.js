@@ -12,6 +12,10 @@
   var current = null;
   var busy = false;
 
+  // 十二月将神名（月将：太阳过宫为将，中气换将）
+  var JIANGSHEN = { '子': '神后', '丑': '大吉', '寅': '功曹', '卯': '太冲', '辰': '天罡', '巳': '太乙',
+                    '午': '胜光', '未': '小吉', '申': '传送', '酉': '从魁', '戌': '河魁', '亥': '登明' };
+
   /* ---------- 星野 ---------- */
   function buildStars() {
     var host = el('stars');
@@ -135,7 +139,7 @@
       current = c;
       current.place = state.place;
 
-      el('chart').innerHTML = CH.svg(c);
+      el('chart').innerHTML = chartMode === 'hor' ? CH.horizon(c) : CH.svg(c);
 
       // 读数
       el('ro-tst').textContent = pad(c.tst.hh) + ':' + pad(c.tst.mm);
@@ -153,7 +157,7 @@
         fillLunarMonth(c.lunar.y, c.lunar.m + (c.lunar.leap ? 'L' : ''));
         el('lun-d').value = c.lunar.d;
         el('lun-note').textContent = '农历 ' + c.lunar.monthName + c.lunar.dayName +
-          '　' + c.ganzhi.year + '年　' + (c.lunar.days === 30 ? '大月' : '小月');
+          '　' + (c.lunar.days === 30 ? '大月，凡三十日' : '小月，凡二十九日');
       } else {
         el('lun-note').textContent = '超出农历表范围（1900–2100）';
       }
@@ -163,8 +167,13 @@
       el('gz-m').value = c.ganzhi.monthIdx;
       el('gz-d').value = c.ganzhi.dayIdx;
       el('gz-h').value = c.ganzhi.hourIdx;
-      el('gz-note').textContent = c.ganzhi.year + '年 ' + c.ganzhi.month + '月 ' + c.ganzhi.day + '日 ' + c.ganzhi.hour + '时（' +
-        (c.nextTerm ? '距' + c.nextTerm.name + ' ' + Math.max(0, Math.round(c.nextTerm.jd - c.jd)) + '日' : '') + '）';
+      // 月建月将属历（不占），随干支历示之；次行书「几月建某」
+      var MONTH_NUM = { '寅': '正', '卯': '二', '辰': '三', '巳': '四', '午': '五', '未': '六', '申': '七', '酉': '八', '戌': '九', '亥': '十', '子': '十一', '丑': '十二' };
+      var mZhiG = c.ganzhi.month.charAt(1);
+      var yj = D.ZODIAC_ZHI[Math.floor(A.norm360(c.solarLon) / 30) % 12];
+      el('gz-note').textContent = c.ganzhi.year + '年 ' + c.ganzhi.month + '月 ' + c.ganzhi.day + '日 ' + c.ganzhi.hour + '时\n' +
+        MONTH_NUM[mZhiG] + '月建' + mZhiG + ' · ' + yj + '将' + JIANGSHEN[yj] +
+        '（' + (c.nextTerm ? '距' + c.nextTerm.name + ' ' + Math.max(0, Math.round(c.nextTerm.jd - c.jd)) + '日' : '') + '）';
 
       renderTable(c);
       renderOmen(c);
@@ -181,26 +190,53 @@
     var s = Math.abs(b.speed);
     var v = s >= 10 ? s.toFixed(1) : (s < 0.005 ? '0.00' : s.toFixed(2));
     if (b.key !== 'sun' && b.key !== 'moon' && b.elong < FU_LIMIT[b.key]) return { t: '伏 ' + v, cls: 'fu' };
-    if (Math.abs(b.speed) <= 0.03) return { t: '留 ' + v, cls: 'liu' };
+    if (Math.abs(b.speed) <= 0.015) return { t: '留 ' + v, cls: 'liu' };
     if (b.speed < 0) return { t: '逆 ' + v, cls: 'ni' };
     return { t: '顺 ' + v, cls: 'shun' };
   }
 
-  // 列序：体（星曜）→ 性（亮度）→ 行（行度）→ 位（赤经）→ 次（坐支之次名）→ 宿 → 度 → 野（州国）
+  // 列序：体（星曜）→ 候（占候）→ 行（行度）→ 位（赤经）→ 高度（地平高度与方位）→ 次 → 宿 → 度 → 野
+  var DIR8 = ['北', '东北', '东', '东南', '南', '西南', '西', '西北'];
+  function dir8(az) { return DIR8[Math.round(((az % 360) + 360) % 360 / 45) % 8]; }
+
+  // 式盘 / 寻星 切换（shi=太乙式盘，hor=地平圈寻星盘）
+  var chartMode = 'shi';
+  function setChartMode(m) {
+    chartMode = m;
+    el('tab-shi').classList.toggle('on', m === 'shi');
+    el('tab-hor').classList.toggle('on', m === 'hor');
+    el('chart-legend').hidden = m !== 'shi';
+    el('chart-legend-hor').hidden = m !== 'hor';
+    if (current) render();
+  }
+
   function renderTable(c) {
     var html = '';
     c.bodies.forEach(function (b) {
-      var mw = D.miaoWang(b.key, b.zhi);
       var mo = motionInfo(b);
+      // 占候：有凌犯守掩之事书其事（朱/黄），无事书位态（冲照大距晨夕见、朔弦望）
+      var houT, houCls, houTitle;
+      if (b.event) {
+        houT = b.event.kind + b.event.star;
+        houCls = b.event.kind === '守' ? 'hou-shou' : 'hou-ev';
+        houTitle = b.event.body + b.event.kind + b.event.star + '（' + b.event.xiu + '），相距 ' + b.event.deg.toFixed(2) + '°' + (b.event.vis ? '，' + b.event.vis : '');
+      } else {
+        houT = b.hou || '—';
+        houCls = 'hou-pos';
+        houTitle = { '合': '与日同度', '晨见': '日出前见于东方', '夕见': '日没后见于西方', '东大距': '在日东，距角最大', '西大距': '在日西，距角最大', '冲': '与日相望，整夜可见', '东方照': '在日东九十度', '西方照': '在日西九十度', '朔': '日月同度', '上弦': '日月距九十度', '望': '日月相望', '下弦': '日月距二百七十度' }[b.hou] || '';
+      }
       html += '<tr>' +
         '<td class="p-name"><span class="p-glyph" style="color:' + b.color + '">' + b.glyph + '</span>' + b.name + '</td>' +
-        '<td class="wx wx-' + mw.cls + '" title="' + mw.t + '（' + mw.rule + '，' + b.zhi + '宫）">' + mw.t + '</td>' +
+        '<td class="hou ' + houCls + '"' + (houTitle ? ' title="' + houTitle + '"' : '') + '>' + houT + '</td>' +
         '<td class="num mo mo-' + mo.cls + '">' + mo.t + '</td>' +
         '<td class="num">' + b.ra.toFixed(2) + '°</td>' +
+        (b.alt >= 0
+          ? '<td class="num alt" title="地平高度 · 方位（自北顺时针）">+' + Math.round(b.alt) + '°·' + dir8(b.az) + '</td>'
+          : '<td class="num alt alt-un" title="地平线下">' + Math.round(b.alt) + '°</td>') +
         '<td class="xz">' + D.CI[b.zhi].name + '</td>' +
         '<td class="xiu">' + b.xiu.full + '</td>' +
         '<td class="num">' + b.du.toFixed(2) + '</td>' +
-        '<td>' + b.zhou + '<span class="dim"> · ' + b.guo + '</span></td>' +
+        '<td>' + b.zhou + '</td>' +
         '</tr>';
     });
     el('omen-body').innerHTML = html;
@@ -210,25 +246,53 @@
     var sun = c.bodies[0];
     var moon = c.bodies[1];
     var mZhi = CH.monthZhi(c);
-    // 月将：太阳过宫为将，中气换将；十二月将神名
-    var jiangshen = { '子': '神后', '丑': '大吉', '寅': '功曹', '卯': '太冲', '辰': '天罡', '巳': '太乙',
-                      '午': '胜光', '未': '小吉', '申': '传送', '酉': '从魁', '戌': '河魁', '亥': '登明' };
-    var yuejiang = D.ZODIAC_ZHI[Math.floor(A.norm360(c.solarLon) / 30) % 12];
 
-    // 月相与交食：朔望视日月黄经之差，食限视月距黄道之纬
-    var phase = A.norm360(moon.lon - sun.lon);
-    var Xiang = ['朔', '上弦', '望', '下弦'];
-    var xiang = '月近' + Xiang[Math.floor(((phase + 22.5) % 360) / 90)];
-    var shuoNear = Math.abs(A.norm180(phase)) < 12;
-    var wangNear = Math.abs(A.norm180(phase - 180)) < 12;
-    var eclipse = '';
-    if (shuoNear && Math.abs(moon.lat) < 1.4) eclipse = '，日食可期';
-    else if (wangNear && Math.abs(moon.lat) < 1.1) eclipse = '，月食可期';
+    // 月相与交食：以真朔望时刻为断。朔望时刻由日月视黄经差牛顿迭代求得，
+    // 食限取该时刻太阴黄纬（日食 |β|<1.5°、月食 |β|<1.1°），且须在朔望前后十八小时内
+    var shuo = A.syzygyNear(c.jd, 0);
+    var wang = A.syzygyNear(c.jd, 180);
+    var EAT_DAY = 0.75;   // 朔望前后十八小时之内
+    var xiang, eclipse = '';
+    if (Math.abs(shuo.jd - c.jd) <= EAT_DAY) {
+      xiang = '月近朔';
+      if (Math.abs(shuo.lat) < 1.5) eclipse = '，日食可期';
+    } else if (Math.abs(wang.jd - c.jd) <= EAT_DAY) {
+      xiang = '月近望，暗星难见';
+      if (Math.abs(wang.lat) < 1.1) eclipse = '，月食可期';
+    } else {
+      var phase = A.norm360(moon.lon - sun.lon);
+      var Xiang = ['朔', '上弦', '望', '下弦'];
+      xiang = '月近' + Xiang[Math.floor(((phase + 22.5) % 360) / 90)];
+    }
+
+    // 昏旦中星：《尧典》之遗，以日没后/日出前三刻近子午圈之距星为断
+    var cen = '';
+    if (c.horizon && (c.horizon.duskStar || c.horizon.dawnStar)) {
+      var cenParts = [];
+      if (c.horizon.duskStar) cenParts.push('昏中' + c.horizon.duskStar.name + '（' + c.horizon.duskStar.xiu + '）');
+      if (c.horizon.dawnStar) cenParts.push('旦中' + c.horizon.dawnStar.name + '（' + c.horizon.dawnStar.xiu + '）');
+      cen = cenParts.join('，') + '。';
+    }
+
+    // 五星聚舍：五纬同宿，三、四、五星皆书（五星聚舍为实星占大宗）
+    var ju = '';
+    if (c.gatherings && c.gatherings.length) {
+      ju = c.gatherings.map(function (g) {
+        return ['三', '四', '五'][g.n - 3] + '星聚于' + g.xiu + '（' + g.stars.join('、') + (g.vis ? '，' + g.vis : '') + '）';
+      }).join('。') + '。';
+    }
+
+    // 凌犯守掩：七政与恒星、七政互合之球面角距断（犯一度、凌 0.15°、月掩 0.3°、守=留而不去）
+    var app = '';
+    if (c.approaches && c.approaches.length) {
+      app = c.approaches.slice(0, 4).map(function (ap) {
+        return ap.body + ap.kind + ap.star + '（' + ap.xiu + '，' + ap.deg.toFixed(2) + '°' + (ap.vis ? '，' + ap.vis : '') + '）';
+      }).join('。') + '。';
+    }
 
     el('omen-note').textContent =
-      c.lunar.monthName + '建' + mZhi + '，' + yuejiang + '将' + jiangshen[yuejiang] + '。' +
       '太阳入' + sun.xiu.name + '宿' + sun.du.toFixed(1) + '度，斗柄指' + mZhi + '（月建）。' +
-      xiang + eclipse + '。';
+      xiang + eclipse + '。' + cen + ju + app;
   }
 
   /* ---------- 同步入口 ---------- */
@@ -372,8 +436,42 @@
       syncFromSolar(now.getFullYear(), now.getMonth() + 1, now.getDate());
     });
 
+    // 时间步进：退一日 / 退一时 / 进一时 / 进一日（以 UTC 容器作纯日历算术，跨月跨年自滚）
+    function stepTime(hours) {
+      var t = Date.UTC(state.y, state.m - 1, state.d, state.hh, state.mm) + hours * 3600000;
+      var nd = new Date(t);
+      state.hh = nd.getUTCHours();
+      state.mm = nd.getUTCMinutes();
+      el('sol-hh').value = state.hh;
+      el('sol-mm').value = state.mm;
+      syncFromSolar(nd.getUTCFullYear(), nd.getUTCMonth() + 1, nd.getUTCDate());
+    }
+    el('step-d-prev').addEventListener('click', function () { stepTime(-24); });
+    el('step-h-prev').addEventListener('click', function () { stepTime(-1); });
+    el('step-h-next').addEventListener('click', function () { stepTime(1); });
+    el('step-d-next').addEventListener('click', function () { stepTime(24); });
+
+    el('tab-shi').addEventListener('click', function () { setChartMode('shi'); });
+    el('tab-hor').addEventListener('click', function () { setChartMode('hor'); });
+
     el('record').addEventListener('input', function () {
       localStorage.setItem('tgty.record', el('record').value);
+    });
+
+    // 星点点击提示（触屏无悬停，点击同效）：命中区携 data-tip
+    el('chart').addEventListener('click', function (e) {
+      var t = e.target && e.target.closest ? e.target.closest('.st-hit') : null;
+      var tip = el('star-tip');
+      if (!t) { tip.hidden = true; return; }
+      tip.textContent = t.getAttribute('data-tip');
+      tip.hidden = false;
+      var x = Math.min(e.clientX + 14, window.innerWidth - 280);
+      tip.style.left = Math.max(8, x) + 'px';
+      tip.style.top = Math.max(8, e.clientY - 16) + 'px';
+    });
+    document.addEventListener('click', function (e) {
+      if (!e.target || !e.target.closest) return;
+      if (!e.target.closest('.st-hit')) el('star-tip').hidden = true;
     });
     el('btn-clear-rec').addEventListener('click', function () {
       el('record').value = '';
@@ -419,6 +517,13 @@
     bind();
     setPlaceByName('北京市', '北京市', '东城区');
     el('record').value = localStorage.getItem('tgty.record') || '';
+  }
+
+  // PWA：注册 Service Worker（离线可用）；file:// 与不支持时静默略过
+  if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js');
+    });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

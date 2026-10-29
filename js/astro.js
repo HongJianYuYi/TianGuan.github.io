@@ -12,6 +12,33 @@
   function norm360(x) { x = x % 360; return x < 0 ? x + 360 : x; }
   function norm180(x) { x = norm360(x); return x > 180 ? x - 360 : x; }
 
+  /* ---------- ΔT：世界时 UT → 力学时 TT ---------- */
+  // Espenak–Meeus 分段多项式；2015 年后实测 ΔT 停滞于约 69 秒（多项式高估至 75 秒），
+  // 故 2015–2050 段由实测平值向多项式二次过渡，其余年份各用其式。
+  function deltaT(jd) {
+    var y = 2000 + (jd - 2451545.0) / 365.25;
+    var t, u;
+    if (y >= 2015 && y <= 2050) {
+      t = y - 2000;
+      var poly = 62.92 + 0.32217 * t + 0.005589 * t * t;
+      var w = (y - 2015) / 35;
+      return 69.2 + (poly - 69.2) * w * w;
+    }
+    if (y > 2050) {
+      u = (y - 1820) / 100;
+      return -20 + 32 * u * u - 0.5628 * (2150 - y);
+    }
+    if (y < 1920) { t = y - 1900; return -2.79 + 1.494119 * t - 0.0598939 * t * t + 0.0061966 * Math.pow(t, 3) - 0.000197 * Math.pow(t, 4); }
+    if (y < 1941) { t = y - 1920; return 21.20 + 0.84493 * t - 0.076100 * t * t + 0.0020936 * Math.pow(t, 3); }
+    if (y < 1961) { t = y - 1950; return 29.07 + 0.407 * t - t * t / 233 + Math.pow(t, 3) / 2547; }
+    if (y < 1986) { t = y - 1975; return 45.45 + 1.067 * t - t * t / 260 - Math.pow(t, 3) / 718; }
+    if (y < 2005) { t = y - 2000; return 63.86 + 0.3345 * t - 0.060374 * t * t + 0.0017275 * Math.pow(t, 3) + 0.000651814 * Math.pow(t, 4) + 0.00002373599 * Math.pow(t, 5); }
+    t = y - 2000;
+    return 62.92 + 0.32217 * t + 0.005589 * t * t;
+  }
+
+  function ttOf(jd) { return jd + deltaT(jd) / 86400; }
+
   /* ---------- 儒略日 ---------- */
   // 由本地年月日时分与所在时区（小时）求 JD
   function jdFromLocal(y, m, d, hh, mm, ss, tz) {
@@ -61,7 +88,7 @@
 
   /* ---------- 太阳 ---------- */
   function sunState(jd) {
-    var d = jd - 2451543.5;
+    var d = ttOf(jd) - 2451543.5;
     var w = 282.9404 + 4.70935e-5 * d;          // 近日点黄经
     var e = 0.016709 - 1.151e-9 * d;            // 偏心率
     var M = norm360(356.0470 + 0.9856002585 * d); // 平近点角
@@ -101,7 +128,7 @@
   /* ---------- 太阴 ---------- */
   function moonState(jd) {
     var s = sunState(jd);
-    var d = jd - 2451543.5;
+    var d = ttOf(jd) - 2451543.5;
     var N = norm360(125.1228 - 0.0529538083 * d);
     var i = 5.1454;
     var w = norm360(318.0634 + 0.1643573223 * d);
@@ -174,7 +201,7 @@
   };
 
   function planetState(key, jd) {
-    var d = jd - 2451543.5;
+    var d = ttOf(jd) - 2451543.5;
     var el = ELEMENTS[key](d);
     var M = norm360(el.M);
     var e = el.e;
@@ -284,6 +311,85 @@
     return { ra: norm360(ra), dec: dec };
   }
 
+  /* ---------- 岁差（恒星 J2000 平赤道坐标 → 当日真赤道坐标） ---------- */
+  // IAU 1976（Lieske）三分量旋转；±200 年内误差优于 1″，对星盘判宿足够
+  function precessJ2000(ra, dec, jd) {
+    var T = (jd - 2451545.0) / 36525;
+    var AS = 1 / 3600;
+    var zeta = (2306.2181 * T + 0.30188 * T * T + 0.017998 * T * T * T) * AS * D2R;
+    var z = (2306.2181 * T + 1.09468 * T * T + 0.018203 * T * T * T) * AS * D2R;
+    var theta = (2004.3109 * T - 0.42665 * T * T - 0.041833 * T * T * T) * AS * D2R;
+    var a0 = ra * D2R + zeta, d0 = dec * D2R;
+    var A = Math.cos(d0) * Math.sin(a0);
+    var B = Math.cos(theta) * Math.cos(d0) * Math.cos(a0) - Math.sin(theta) * Math.sin(d0);
+    var C = Math.sin(theta) * Math.cos(d0) * Math.cos(a0) + Math.cos(theta) * Math.sin(d0);
+    return {
+      ra: norm360(Math.atan2(A, B) * R2D + z / D2R),
+      dec: Math.asin(C) * R2D
+    };
+  }
+
+  /* ---------- 地平坐标与晨昏 ---------- */
+  // 赤道 → 地平：高度角 alt、方位角 az（自北顺时针，度）
+  function equToHor(ra, dec, jd, lonEast, lat) {
+    var H = (localSiderealTime(jd, lonEast) - ra) * D2R;
+    var d = dec * D2R, p = lat * D2R;
+    var alt = Math.asin(Math.sin(p) * Math.sin(d) + Math.cos(p) * Math.cos(d) * Math.cos(H)) * R2D;
+    var az = Math.atan2(Math.sin(H), Math.cos(H) * Math.sin(p) - Math.tan(d) * Math.cos(p)) * R2D;
+    return { alt: alt, az: norm360(az + 180) };
+  }
+
+  function sunAltAt(jd, lonEast, lat) {
+    var eq = eclToEqu(sunState(jd).lon, 0, jd);
+    return equToHor(eq.ra, eq.dec, jd, lonEast, lat).alt;
+  }
+
+  // 当日日出/日落（北京时间日期；返回 JD，极昼极夜为 null）
+  function sunRiseSet(y, m, d, lonEast, lat) {
+    var jd0 = jdFromBeijing(y, m, d, 0, 0, 0);
+    function scan(wantRise) {
+      var prev = sunAltAt(jd0, lonEast, lat), prevT = jd0;
+      for (var i = 1; i <= 144; i++) {              // 10 分钟步长扫描
+        var t = jd0 + i / 144;
+        var a = sunAltAt(t, lonEast, lat);
+        if ((prev < 0) !== (a < 0) && (a > prev) === wantRise) {
+          var lo = prevT, hi = t;
+          for (var k = 0; k < 24; k++) {            // 二分细化到约 2 秒
+            var mid = (lo + hi) / 2;
+            if ((sunAltAt(mid, lonEast, lat) < 0) === wantRise) lo = mid; else hi = mid;
+          }
+          return (lo + hi) / 2;
+        }
+        prev = a; prevT = t;
+      }
+      return null;
+    }
+    return { rise: scan(true), set: scan(false) };
+  }
+
+  /* ---------- 朔望求解 ---------- */
+  function elongationAt(jd) {
+    return norm180(moonState(jd).lon - sunState(jd).lon);
+  }
+
+  // 求距 jd 最近的一次朔（target=0）或望（target=180），牛顿迭代，返回该时刻与月纬
+  function syzygyNear(jd, target) {
+    var t = jd;
+    for (var i = 0; i < 10; i++) {
+      var f = norm180(elongationAt(t) - target);
+      if (Math.abs(f) < 1e-5) break;
+      var h = 0.05;
+      var df = (norm180(elongationAt(t + h) - target) - norm180(elongationAt(t - h) - target)) / (2 * h);
+      if (df < 8) df = 12.19;            // 防跨 ±180° 跳变
+      var step = f / df;
+      if (step > 20) step = 20;
+      if (step < -20) step = -20;
+      t -= step;
+    }
+    var m = moonState(t);
+    return { jd: t, lat: m.lat, lon: m.lon };
+  }
+
   window.TGAstro = {
     norm360: norm360,
     norm180: norm180,
@@ -299,6 +405,14 @@
     solarTermsOfYear: solarTermsOfYear,
     localSiderealTime: localSiderealTime,
     obliquity: obliquity,
-    eclToEqu: eclToEqu
+    eclToEqu: eclToEqu,
+    deltaT: deltaT,
+    ttOf: ttOf,
+    elongationAt: elongationAt,
+    syzygyNear: syzygyNear,
+    precessJ2000: precessJ2000,
+    equToHor: equToHor,
+    sunAltAt: sunAltAt,
+    sunRiseSet: sunRiseSet
   };
 })();
